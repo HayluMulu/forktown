@@ -54,6 +54,8 @@ Choosing a plot in the builder does **not** reserve it. The first accepted contr
 
 ## Develop locally
 
+Fork and clone the project, then create your contribution branch before designing your place.
+
 ```sh
 git clone YOUR_FORK_URL
 cd YOUR_FORK_DIRECTORY
@@ -61,7 +63,13 @@ npm ci
 npm run dev
 ```
 
-Add your file to `places/`, and the city reloads automatically. Before sending a pull request:
+Add your file to `places/`, and the city reloads automatically.
+
+You can also let the builder create the file: choose **Build a place → Continue to save → Save to my project**. It writes `places/<your-file-id>.json` into the checkout running `npm run dev`, and the local city updates. Existing files are never overwritten; choose a new id or edit an existing file yourself. Review the new file, commit it, push your branch, and open your PR. Saving does not make commits, switch branches, push, or create a PR.
+
+The save button is available only in the local development city. A hosted site or `npm run preview` still offers **Copy JSON** and **Download**.
+
+Before sending a pull request:
 
 ```sh
 npm run check

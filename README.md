@@ -21,8 +21,8 @@ Open `http://localhost:5173`. No accounts, API keys, database, or remote service
 
 1. Open the city and choose **Build a place**.
 2. Choose a building, color, story, decoration, and an empty plot.
-3. Download the JSON file. You can also preview the building in your local city.
-4. Fork this repository and add your file to `places/`.
+3. In your local checkout, choose **Continue to save → Save to my project**. The builder creates your JSON in `places/` and updates the local city. On a hosted site, download the JSON instead.
+4. Commit the new file on a branch in your fork. If you downloaded it, first add it to `places/`.
 5. Open a pull request against the original repository.
 
 Read the [step-by-step contribution guide](CONTRIBUTING.md). You can do the whole contribution through GitHub’s browser interface. A builder preview is private to your current visit; it becomes part of the public city only after a pull request is reviewed, merged, and deployed. The builder saves draft details on your device, including unfinished text, for your next visit.
@@ -34,11 +34,11 @@ Read the [step-by-step contribution guide](CONTRIBUTING.md). You can do the whol
 - Day and night palettes, lit windows, plot labels, and stable plot coordinates.
 - Searchable place directory and open-plot directory, including a keyboard-accessible alternative to the map.
 - Place stories, contributor credit, and shareable `#place=id` links without server routing.
-- A live building editor, local preview, JSON export, and browser-based contribution instructions.
+- A live building editor, local preview, direct saves to your local checkout, JSON export, and browser-based contribution instructions.
 - A shared schema used by the editor, build, and contribution validator.
 - Friendly errors for occupied plots, duplicate ids, invalid names, unsupported fields, and malformed JSON.
 - Automated checks on pull requests and optional GitHub Pages deployment.
-- All fonts, art, and place data are served locally. The city makes no API requests and includes no analytics.
+- All fonts, art, and place data are served locally. The hosted city needs no backend and includes no analytics; development saves use only the local server.
 
 ## Project map
 
@@ -52,6 +52,7 @@ src/components/City.tsx    Map interaction and accessible controls
 src/components/Contribute.tsx  Building editor and JSON export
 src/App.tsx                The town, directory, and onboarding
 scripts/validate-places.ts Command-line contribution checks
+scripts/local-places.ts    Development-only saves to the local places folder
 tests/                    Contribution rules and world behavior
 docs/                     Architecture and publishing guides
 .github/                  Pull request checks, templates, and deployment
