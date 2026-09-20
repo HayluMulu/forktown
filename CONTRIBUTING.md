@@ -2,15 +2,18 @@
 
 You don’t need to be an expert to contribute to Forktown. A thoughtful first contribution is a small place with your own name, style, and story.
 
-## The easiest route: use your browser
+Want to learn from another house? Choose **Browse house files** in the builder, or select a house in town and click **See the little file behind it**. You can read and copy its actual JSON from `places/`, then return to your draft. After saving locally, **See my saved JSON** opens your new file. Local saves, private previews, and downloads do not publish anything to the shared town; a reviewed and merged pull request is how your house gets there.
 
-1. Visit the city and click **Build a place**, or select a plot from **Open plots**.
-2. Add your GitHub username without `@`, choose a building, and make it yours. Choose a unique file id such as `sam-moon-cafe`.
-3. Click **Get my place file**, then **Download**. Keep this file for the next steps.
-4. On the original GitHub repository, click **Fork** to create your own copy.
-5. In your fork, open the `places` folder. Choose **Add file → Upload files**, upload your downloaded `.json` file, and commit the change with a message such as `Add Sam's Moon Cafe`.
-6. Use **Contribute → Open pull request** in your fork. Check that the base repository is the original Forktown repository and the head repository is your fork.
-7. Give the pull request a friendly title, complete the short checklist, and submit it.
+## Build in your own copy
+
+The published GitHub Pages town is read-only: explore houses and their JSON there, then build in your own local fork.
+
+1. On GitHub, fork the repository and clone your fork to your computer. Create a contribution branch.
+2. Follow [Develop locally](#develop-locally) below to install dependencies and start your local town.
+3. Choose **Build a place**, add your GitHub username, and use the Home, Neighbor, and Outdoor sign tabs to design it.
+4. Choose **Continue to save → Save to my project**. This creates `places/<your-id>.json` in your local fork.
+5. Click **See my saved JSON** to inspect the file. Commit it and push your contribution branch.
+6. Open a pull request from your fork to the original repository, complete the checklist, and submit it.
 
 Our checks will validate the file. A maintainer reviews the story, credit, and change before merging. Once the updated site is deployed, your place appears in the neighborhood.
 
@@ -40,13 +43,26 @@ Copy `examples/my-little-place.json` to `places/your-unique-id.json`. Do not cha
 | `id`         | A unique 3–40 character id: lowercase letters, numbers, and single hyphens. The file must have this same name followed by `.json`. |
 | `name`       | A place name, 3–32 characters. International characters are welcome.                                                               |
 | `creator`    | Your real GitHub username, without `@`. The starter-only credit `forktown` is reserved.                                            |
-| `plot`       | An unoccupied plot from `A1` through `E5`.                                                                                         |
+| `plot`       | An unoccupied plot shown in the town map (currently rows A�E, columns 1�10).                                                       |
 | `building`   | `cottage`, `cafe`, `bookshop`, `greenhouse`, `studio`, or `observatory`.                                                           |
 | `color`      | A six-digit hex color, such as `#789B76`.                                                                                          |
 | `decoration` | `flowers`, `tree`, `bench`, or `mailbox`.                                                                                          |
 | `story`      | A personal description of 10–180 characters.                                                                                       |
 
 Add only your own place file. There is no shared list to edit. Plot positions remain fixed as the town grows.
+
+## Make it more personal
+
+The eight basic fields above still work: omitted `design`, `resident`, and `sign` objects get friendly defaults. Use the builder or `examples/living-place.json` when you want to customize them. If you include an object, include all its fields.
+
+- **Home:** `design` sets wall and trim hex colors, 1-3 floors, a `classic` / `flat` / `gable` roof, `cross` / `round` / `shutters` windows, `wildflowers` / `paving` / `vegetables` garden, and an optional `porch` or `balcony` feature (`none` is also valid). The top-level `color` sets the roof color. `classic` uses the building family's original roof.
+- **Neighbor:** `resident` sets a name (2-24 characters), skin/hair/outfit hex colors, `none` / `hat` / `glasses` accessory, and a greeting (1-24 characters).
+- **Routine:** morning (06:00-12:00), afternoon (12:00-18:00), and evening (18:00-22:00) each choose `stroll`, `work`, or `home`. The last two mean working and relaxing at home. Everyone sleeps from 22:00 to 06:00. No meetings, destinations, or other residents' names to configure.
+- **Outdoor sign:** choose `none`, `text`, or `html`. Text signs have up to 18 characters plus `color` and `background`. HTML artwork uses the small language described in [sign artwork](docs/SIGN_ARTWORK.md).
+
+One place brings one resident. A resident can be fictional; the creator credit should be your GitHub username. To change your own home or daily routine later, edit your existing JSON file and submit another PR.
+
+The town follows a shared UTC-based day: one real minute equals one town hour. The cycle repeats every 24 minutes, starting at UTC midnight. Visitors can pause their view; returning to live catches up to the current town time. Following a neighbor keeps the camera with them; dragging the map or pressing Stop following returns to exploring.
 
 ## If two people choose the same plot
 
@@ -67,7 +83,7 @@ Add your file to `places/`, and the city reloads automatically.
 
 You can also let the builder create the file: choose **Build a place → Continue to save → Save to my project**. It writes `places/<your-file-id>.json` into the checkout running `npm run dev`, and the local city updates. Existing files are never overwritten; choose a new id or edit an existing file yourself. Review the new file, commit it, push your branch, and open your PR. Saving does not make commits, switch branches, push, or create a PR.
 
-The save button is available only in the local development city. A hosted site or `npm run preview` still offers **Copy JSON** and **Download**.
+The builder and save button are available only in the local development city. A hosted site or `npm run preview` offers exploration, read-only house files, and instructions for contributing from your own copy.
 
 Before sending a pull request:
 

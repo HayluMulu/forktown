@@ -1,4 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import TownClock from './components/TownClock';
+import Neighbors, { ACTIVITY_LABELS } from './components/Neighbors';
+import ResidentPreview from './components/ResidentPreview';
+import SignPreview from './components/SignPreview';
+import { useTownClock } from './lib/use-town-clock';
+import { simulateResidents } from './lib/simulation';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowDown,
   ArrowLeft,
@@ -12,13 +18,11 @@ import {
   GitFork,
   Heart,
   MapPin,
-  Moon,
   Plus,
   Search,
   Share2,
   Sparkles,
   Sprout,
-  Sun,
   Users,
   X,
 } from 'lucide-react';
@@ -32,6 +36,7 @@ import '@fontsource/fraunces/500-italic.css';
 import City, { type CityHandle } from './components/City';
 import BuildingPreview from './components/BuildingPreview';
 import Contribute from './components/Contribute';
+import HouseFiles from './components/HouseFiles';
 import Modal from './components/Modal';
 import { isFoundingPlace, places, repositoryUrl } from './lib/places';
 import { PLOTS } from './lib/world';
@@ -46,11 +51,14 @@ function initialSelection() {
 export default function App() {
   const city = useRef<CityHandle>(null);
   const [selectedPlot, setSelectedPlot] = useState<string | null>(initialSelection);
-  const [night, setNight] = useState(false);
+  const clock = useTownClock();
+  const night = clock.minutes < 360 || clock.minutes >= 1200;
+  const [followed, setFollowed] = useState<string | null>(null);
   const [showPlots, setShowPlots] = useState(false);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'places' | 'empty'>('places');
-  const [modal, setModal] = useState<'contribute' | 'guide' | 'about' | null>(null);
+  const [modal, setModal] = useState<'contribute' | 'guide' | 'about' | 'files' | null>(null);
+  const [sourceId, setSourceId] = useState<string | undefined>();
   const [buildPlot, setBuildPlot] = useState<string | undefined>();
   const [draft, setDraft] = useState<Place | null>(null);
   const [toast, setToast] = useState('');
@@ -62,19 +70,25 @@ export default function App() {
         : places,
     [draft, places],
   );
+  const residents = useMemo(
+    () => simulateResidents(displayPlaces, clock.minutes),
+    [displayPlaces, clock.minutes],
+  );
   const starterCount = places.filter(isFoundingPlace).length;
   const communityCount = places.length - starterCount;
   const selected = displayPlaces.find((place) => place.plot === selectedPlot);
   const available = PLOTS.filter((plot) => !places.some((place) => place.plot === plot.id));
   const filteredPlaces = displayPlaces.filter((place) =>
-    `${place.name} ${place.creator} ${TYPE_LABELS[place.building]} ${place.plot}`
+    `${place.name} ${place.creator} ${place.resident.name} ${TYPE_LABELS[place.building]} ${place.plot}`
       .toLowerCase()
       .includes(search.toLowerCase()),
   );
   const filteredPlots = available.filter((plot) =>
     `${plot.id} empty plot`.toLowerCase().includes(search.toLowerCase()),
   );
-  function select(plotId: string | null, focus = false) {
+  const select = useCallback((plotId: string | null, focus = false) => {
+    city.current?.stopFollowing();
+    setFollowed(null);
     setSelectedPlot(plotId);
     setShared(false);
     const place = places.find((p) => p.plot === plotId);
@@ -85,7 +99,7 @@ export default function App() {
       `${window.location.pathname}${window.location.search}${hash}`,
     );
     if (plotId && focus) city.current?.focus(plotId);
-  }
+  }, []);
   useEffect(() => {
     const listener = () => setSelectedPlot(initialSelection());
     if (window.location.hash.startsWith('#place=')) listener();
@@ -102,6 +116,10 @@ export default function App() {
     return () => clearTimeout(timer);
   }, [toast]);
   function startBuilding(plot?: string) {
+    if (!localSaveAvailable) {
+      setModal('guide');
+      return;
+    }
     if (!available.length) {
       setToast('This neighborhood is full. A new district can be added to the world.');
       return;
@@ -121,15 +139,19 @@ export default function App() {
       setToast('Copy the address from your browser to share this place.');
     }
   }
-  function preview(place: Place) {
-    setDraft(place);
-    select(place.plot, true);
-    setToast(
-      localSaveAvailable
-        ? 'Your place is in the preview. Return to the builder to save it to your project.'
-        : 'Your place is now in the local preview. Export its JSON when you’re ready.',
-    );
-  }
+  const closeBuilder = useCallback(() => setModal(null), []);
+  const preview = useCallback(
+    (place: Place) => {
+      setDraft(place);
+      select(place.plot, true);
+      setToast(
+        localSaveAvailable
+          ? 'Your place is in the preview. Return to the builder to save it to your project.'
+          : 'Your place is now in the local preview. Export its JSON when you’re ready.',
+      );
+    },
+    [select],
+  );
   const founding = selected && isFoundingPlace(selected);
   return (
     <>
@@ -190,7 +212,7 @@ export default function App() {
             )}
             <button className="button button-primary header-build" onClick={() => startBuilding()}>
               <Plus size={16} />
-              <span>Build a place</span>
+              <span>{localSaveAvailable ? 'Build a place' : 'How to contribute'}</span>
             </button>
           </div>
         </div>
@@ -199,16 +221,17 @@ export default function App() {
         <section className="hero" aria-labelledby="hero-title">
           <div className="hero-copy">
             <span className="eyebrow">
-              <span className="tiny-star">✳</span> A LITTLE WORLD, BUILT TOGETHER
+              <span className="tiny-star">✳</span> A LIVING TOWN, BUILT TOGETHER
             </span>
             <h1 id="hero-title">
               Small town.
               <br />
-              <em>Endless possibilities.</em>
+              <em>Little lives. Big stories.</em>
             </h1>
             <p>
-              A cozy corner of the internet, built one pull request at a time.
-              <br className="desktop-break" /> Come explore. Leave a little piece of yourself.
+              A home of your own. A neighbor with a life. A town we make together.
+              <br className="desktop-break" /> Design a place, give someone a daily rhythm, and let
+              them wander.
             </p>
           </div>
           <div className="hero-invitation">
@@ -234,7 +257,7 @@ export default function App() {
                 <MapPin size={18} />
               </span>
               <h2>The neighborhood</h2>
-              <span className="edition-tag">FOUNDING EDITION</span>
+              <span className="edition-tag">LIVING EDITION</span>
             </div>
             <div className="town-settings">
               <label className="plot-toggle">
@@ -246,28 +269,9 @@ export default function App() {
                 <span className="toggle-track" />
                 <span>Plot labels</span>
               </label>
-              <div className="day-switch" aria-label="Time of day">
-                <button
-                  className={!night ? 'selected' : ''}
-                  aria-label="Daytime"
-                  aria-pressed={!night}
-                  onClick={() => setNight(false)}
-                >
-                  <Sun size={14} />
-                  <span>Day</span>
-                </button>
-                <button
-                  className={night ? 'selected' : ''}
-                  aria-label="Nighttime"
-                  aria-pressed={night}
-                  onClick={() => setNight(true)}
-                >
-                  <Moon size={14} />
-                  <span>Night</span>
-                </button>
-              </div>
             </div>
           </div>
+          <TownClock clock={clock} />
           {draft && (
             <div className="preview-banner">
               <Sparkles size={15} />
@@ -297,6 +301,13 @@ export default function App() {
               onSelect={(plot) => select(plot)}
               night={night}
               showPlots={showPlots}
+              residents={residents}
+              followed={followed}
+              onStopFollowing={() => setFollowed(null)}
+              onResidentSelect={(id) => {
+                setSelectedPlot(null);
+                setFollowed(id);
+              }}
             />
             <aside
               className="neighborhood-panel"
@@ -340,6 +351,31 @@ export default function App() {
                           )}
                         </div>
                         <p className="place-story">“{selected.story}”</p>
+                        <div className="detail-resident">
+                          <ResidentPreview resident={selected.resident} size={48} />
+                          <div>
+                            <strong>{selected.resident.name} lives here</strong>
+                            <span>
+                              {
+                                ACTIVITY_LABELS[
+                                  residents.find((r) => r.id === selected.id)?.activity ?? 'home'
+                                ]
+                              }
+                            </span>
+                          </div>
+                        </div>
+                        <button
+                          className="text-button"
+                          onClick={() => {
+                            setFollowed(selected.id);
+                            setSelectedPlot(null);
+                          }}
+                        >
+                          Follow {selected.resident.name} <ArrowRight size={13} />
+                        </button>
+                        <div className="detail-sign">
+                          <SignPreview sign={selected.sign} />
+                        </div>
                         <div className="detail-divider" />
                         <div className="place-facts">
                           <span>Little home, big personality</span>
@@ -367,16 +403,16 @@ export default function App() {
                             {shared ? 'Link copied' : 'Share this little place'}
                           </button>
                         )}
-                        {repositoryUrl && draft?.id !== selected.id && (
-                          <a
+                        {draft?.id !== selected.id && (
+                          <button
                             className="detail-source"
-                            href={`${repositoryUrl}/blob/main/places/${selected.id}.json`}
-                            target="_blank"
-                            rel="noreferrer"
+                            onClick={() => {
+                              setSourceId(selected.id);
+                              setModal('files');
+                            }}
                           >
                             <Code2 size={13} /> See the little file behind it{' '}
-                            <ExternalLink size={11} />
-                          </a>
+                          </button>
                         )}
                       </div>
                     </>
@@ -400,7 +436,10 @@ export default function App() {
                         className="button button-primary full-width"
                         onClick={() => startBuilding(selectedPlot)}
                       >
-                        <Plus size={15} /> Build on plot {selectedPlot}
+                        <Plus size={15} />{' '}
+                        {localSaveAvailable
+                          ? `Build on plot ${selectedPlot}`
+                          : 'Contribute a house'}
                       </button>
                       <span className="small-reassurance">One JSON file is all it takes.</span>
                     </div>
@@ -526,7 +565,10 @@ export default function App() {
                     <span>
                       <span className="live-dot" /> There’s room for you here.
                     </span>
-                    <button aria-label="Build your place" onClick={() => startBuilding()}>
+                    <button
+                      aria-label={localSaveAvailable ? 'Build your place' : 'How to contribute'}
+                      onClick={() => startBuilding()}
+                    >
                       <ArrowRight size={17} />
                     </button>
                   </div>
@@ -547,6 +589,30 @@ export default function App() {
             </span>
           </div>
         </section>
+        <Neighbors
+          residents={residents}
+          followed={followed}
+          onFollow={(id) => {
+            if (id === null) city.current?.stopFollowing();
+            else setFollowed(id);
+            setSelectedPlot(null);
+            document.getElementById('neighborhood')?.scrollIntoView({
+              behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches
+                ? 'instant'
+                : 'smooth',
+              block: 'start',
+            });
+          }}
+          onHome={(plot) => {
+            select(plot, true);
+            document.getElementById('neighborhood')?.scrollIntoView({
+              behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches
+                ? 'instant'
+                : 'smooth',
+              block: 'start',
+            });
+          }}
+        />
         <section className="welcome-strip" aria-label="Your first contribution">
           <div className="welcome-title">
             <span className="eyebrow">YOU DON’T HAVE TO BE AN EXPERT</span>
@@ -614,13 +680,13 @@ export default function App() {
           </button>
         </div>
       )}
-      {modal === 'contribute' && (
-        <Contribute
-          plot={buildPlot}
-          places={places}
-          onClose={() => setModal(null)}
-          onPreview={preview}
-        />
+      {modal === 'contribute' && localSaveAvailable && (
+        <Contribute plot={buildPlot} places={places} onClose={closeBuilder} onPreview={preview} />
+      )}
+      {modal === 'files' && (
+        <Modal title="The files that make a town." onClose={() => setModal(null)} wide>
+          <HouseFiles initialId={sourceId} />
+        </Modal>
       )}
       {modal === 'guide' && (
         <Modal title="Big welcome. Small first step." onClose={() => setModal(null)}>
@@ -633,30 +699,22 @@ export default function App() {
               <li>
                 <span>1</span>
                 <div>
-                  <h3>Design your place</h3>
+                  <h3>Make your own copy</h3>
                   <p>
-                    Choose an empty plot, a building, a color, and a few words that make it yours.
-                    The builder creates the JSON file for you.
+                    Fork the project on GitHub, clone your fork to your computer, and create a
+                    contribution branch. This is where your house file will live.
                   </p>
                 </div>
               </li>
               <li>
                 <span>2</span>
                 <div>
-                  <h3>{localSaveAvailable ? 'Save to your project' : 'Make your own copy'}</h3>
+                  <h3>Build in your local town</h3>
                   <p>
-                    {localSaveAvailable ? (
-                      <>
-                        Click <strong>Save to my project</strong> in the builder. It creates your
-                        JSON file in <code>places/</code> and updates the local city. Commit and
-                        push the file on your branch.
-                      </>
-                    ) : (
-                      <>
-                        Fork the project on GitHub, then add your downloaded file to the{' '}
-                        <code>places/</code> folder. No terminal needed.
-                      </>
-                    )}
+                    Follow the contributor guide to run your copy. Choose{' '}
+                    <strong>Build a place</strong>, then <strong>Save to my project</strong>. Browse
+                    the house files to see your new <code>places/</code> JSON file, then commit and
+                    push your branch.
                   </p>
                 </div>
               </li>
@@ -681,6 +739,13 @@ export default function App() {
                 </div>
               </li>
             </ol>
+            {!localSaveAvailable && (
+              <p className="local-note">
+                This published town is for exploring. Building and saving are available when you run
+                your own copy locally. Houses arrive here after a pull request is reviewed, merged,
+                and published.
+              </p>
+            )}
             <div className="guide-aside">
               <Sprout size={20} />
               <p>
@@ -688,8 +753,40 @@ export default function App() {
                 accessibility, write a guide, or fix a bug. There are many ways to belong.
               </p>
             </div>
-            <button className="button button-primary" onClick={() => startBuilding()}>
-              Let’s build my place <ArrowRight size={16} />
+            {localSaveAvailable ? (
+              <button className="button button-primary" onClick={() => startBuilding()}>
+                Let’s build my place <ArrowRight size={16} />
+              </button>
+            ) : (
+              repositoryUrl && (
+                <div className="export-actions">
+                  <a
+                    className="button button-primary"
+                    href={`${repositoryUrl}/fork`}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Fork on GitHub <ExternalLink size={15} />
+                  </a>
+                  <a
+                    className="button button-secondary"
+                    href={`${repositoryUrl}/blob/HEAD/CONTRIBUTING.md`}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Read the contributor guide <ExternalLink size={15} />
+                  </a>
+                </div>
+              )
+            )}
+            <button
+              className="text-button back-to-design"
+              onClick={() => {
+                setSourceId(undefined);
+                setModal('files');
+              }}
+            >
+              Browse house files <Code2 size={15} />
             </button>
           </div>
         </Modal>
@@ -720,7 +817,8 @@ export default function App() {
               in.
             </p>
             <button className="button button-primary" onClick={() => startBuilding()}>
-              Leave your little mark <Plus size={15} />
+              {localSaveAvailable ? 'Leave your little mark' : 'How to contribute'}{' '}
+              <Plus size={15} />
             </button>
           </div>
         </Modal>

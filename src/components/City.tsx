@@ -1,20 +1,40 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { Crosshair, Minus, Plus, MapPin } from 'lucide-react';
-import { buildingHit, renderCity, type Camera } from '../city/render';
+import { cityHit, renderCity, type Camera } from '../city/render';
 import { findPlotAt, getPlot, plotCenter, unproject } from '../lib/world';
 import type { Place } from '../lib/schema';
+import type { ResidentState } from '../lib/simulation';
+import { project, WORLD_BOUNDS } from '../lib/world';
 
-export type CityHandle = { focus: (plotId: string) => void; reset: () => void };
+export type CityHandle = {
+  focus: (plotId: string) => void;
+  reset: () => void;
+  stopFollowing: () => void;
+};
 type Props = {
   places: Place[];
   selectedPlot: string | null;
   onSelect: (plotId: string) => void;
   night: boolean;
   showPlots: boolean;
+  residents: ResidentState[];
+  followed: string | null;
+  onStopFollowing: () => void;
+  onResidentSelect: (id: string) => void;
 };
 
 const City = forwardRef<CityHandle, Props>(function City(
-  { places, selectedPlot, onSelect, night, showPlots },
+  {
+    places,
+    selectedPlot,
+    onSelect,
+    night,
+    showPlots,
+    residents,
+    followed,
+    onStopFollowing,
+    onResidentSelect,
+  },
   ref,
 ) {
   const wrapper = useRef<HTMLDivElement>(null);
@@ -34,25 +54,55 @@ const City = forwardRef<CityHandle, Props>(function City(
   } | null>(null);
   const fit = useRef(0.57);
   const cameraRef = useRef(camera);
-  cameraRef.current = camera;
+  const tracked = residents.find((resident) => resident.id === followed);
+  const trackedPoint = tracked ? project(tracked.position.x, tracked.position.y) : null;
+  const renderedCamera = trackedPoint
+    ? {
+        ...camera,
+        x: size.width / 2 - trackedPoint.x * camera.zoom,
+        y: size.height / 2 - trackedPoint.y * camera.zoom,
+      }
+    : camera;
+  cameraRef.current = renderedCamera;
   const defaultCamera = useCallback((width: number, height: number): Camera => {
-    const zoom = Math.max(0.3, Math.min((width - 52) / 1480, (height - 85) / 820));
+    const zoom = Math.max(
+      0.01,
+      Math.min(
+        (width - 52) / (WORLD_BOUNDS.right - WORLD_BOUNDS.left + 36),
+        (height - 85) / (WORLD_BOUNDS.bottom + 98),
+      ),
+    );
     fit.current = zoom;
-    return { x: width / 2, y: (height - 722 * zoom) / 2 + 28, zoom };
+    return {
+      x: width / 2 - ((WORLD_BOUNDS.left + WORLD_BOUNDS.right) / 2) * zoom,
+      y: (height - WORLD_BOUNDS.bottom * zoom) / 2 + 28,
+      zoom,
+    };
   }, []);
+  useEffect(() => {
+    if (followed) {
+      setHover(null);
+      setCamera((old) => ({ ...old, zoom: Math.max(old.zoom, 0.6, fit.current * 1.8) }));
+    }
+  }, [followed]);
   const reset = useCallback(
     () => setCamera(defaultCamera(size.width, size.height)),
     [defaultCamera, size],
   );
+  const stopFollowing = useCallback(() => {
+    setCamera(cameraRef.current);
+    onStopFollowing();
+  }, [onStopFollowing]);
   useImperativeHandle(
     ref,
     () => ({
       reset,
+      stopFollowing,
       focus: (id) => {
         const plot = getPlot(id);
         if (!plot) return;
         const pt = plotCenter(plot);
-        const zoom = Math.max(fit.current, Math.min(0.85, fit.current * 1.35));
+        const zoom = Math.max(fit.current, 0.65);
         setCamera({
           x: size.width / 2 - pt.x * zoom,
           y: size.height / 2 - (pt.y - 35) * zoom,
@@ -60,7 +110,7 @@ const City = forwardRef<CityHandle, Props>(function City(
         });
       },
     }),
-    [reset, size],
+    [reset, size, stopFollowing],
   );
   useEffect(() => {
     if (!wrapper.current) return;
@@ -76,7 +126,10 @@ const City = forwardRef<CityHandle, Props>(function City(
   const zoomBy = useCallback(
     (factor: number, anchor?: { x: number; y: number }) => {
       setCamera((old) => {
-        const zoom = Math.max(fit.current * 0.65, Math.min(fit.current * 3.5, old.zoom * factor));
+        const zoom = Math.max(
+          fit.current * 0.65,
+          Math.min(Math.max(1.2, fit.current * 3.5), old.zoom * factor),
+        );
         const a = anchor ?? { x: size.width / 2, y: size.height / 2 };
         return {
           x: a.x - ((a.x - old.x) * zoom) / old.zoom,
@@ -105,8 +158,8 @@ const City = forwardRef<CityHandle, Props>(function City(
     const el = canvas.current;
     if (!el) return;
     const ratio = Math.min(window.devicePixelRatio || 1, 2);
-    el.width = size.width * ratio;
-    el.height = size.height * ratio;
+    if (el.width !== Math.floor(size.width * ratio)) el.width = size.width * ratio;
+    if (el.height !== Math.floor(size.height * ratio)) el.height = size.height * ratio;
     const ctx = el.getContext('2d');
     if (!ctx) return;
     ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
@@ -115,14 +168,16 @@ const City = forwardRef<CityHandle, Props>(function City(
       ctx,
       width: size.width,
       height: size.height,
-      camera,
+      camera: cameraRef.current,
       places,
       selectedPlot,
       hoveredPlot: hover,
       night,
       showPlots,
+      residents,
+      followed,
     });
-  }, [size, camera, places, selectedPlot, hover, night, showPlots]);
+  }, [size, camera, places, selectedPlot, hover, night, showPlots, residents, followed]);
   const hit = (clientX: number, clientY: number) => {
     const bounds = canvas.current!.getBoundingClientRect();
     const local = { x: clientX - bounds.left, y: clientY - bounds.top };
@@ -132,7 +187,12 @@ const City = forwardRef<CityHandle, Props>(function City(
       y: (local.y - current.y) / current.zoom,
     };
     const ground = unproject(world.x, world.y);
-    return { id: buildingHit(world, places) ?? findPlotAt(ground.x, ground.y)?.id ?? null, local };
+    const target = cityHit(world, places, residents);
+    return {
+      id: target?.kind === 'place' ? target.id : (findPlotAt(ground.x, ground.y)?.id ?? null),
+      residentId: target?.kind === 'resident' ? target.id : undefined,
+      local,
+    };
   };
   const hoveredPlace = places.find((place) => place.plot === hover);
   return (
@@ -153,9 +213,11 @@ const City = forwardRef<CityHandle, Props>(function City(
             ArrowDown: [0, -35],
           };
           if (moves[event.key]) {
+            onStopFollowing();
             event.preventDefault();
             const [x, y] = moves[event.key];
-            setCamera((old) => ({ ...old, x: old.x + x, y: old.y + y }));
+            const actual = cameraRef.current;
+            setCamera({ ...actual, x: actual.x + x, y: actual.y + y });
           }
           if (event.key === '+' || event.key === '=') {
             event.preventDefault();
@@ -166,18 +228,23 @@ const City = forwardRef<CityHandle, Props>(function City(
             zoomBy(1 / 1.2);
           }
           if (event.key === 'Home') {
+            onStopFollowing();
             event.preventDefault();
             reset();
           }
         }}
         onPointerDown={(event) => {
           if (pointer.current || event.button !== 0) return;
+          const actual = cameraRef.current;
+          if (followed) {
+            stopFollowing();
+          }
           pointer.current = {
             id: event.pointerId,
             x: event.clientX,
             y: event.clientY,
-            cx: camera.x,
-            cy: camera.y,
+            cx: actual.x,
+            cy: actual.y,
             moved: false,
           };
           event.currentTarget.setPointerCapture(event.pointerId);
@@ -203,8 +270,9 @@ const City = forwardRef<CityHandle, Props>(function City(
           const p = pointer.current;
           if (!p || p.id !== event.pointerId) return;
           if (!p.moved) {
-            const { id } = hit(event.clientX, event.clientY);
-            if (id) onSelect(id);
+            const { id, residentId } = hit(event.clientX, event.clientY);
+            if (residentId) onResidentSelect(residentId);
+            else if (id) onSelect(id);
           }
           pointer.current = null;
           setDragging(false);
@@ -217,9 +285,24 @@ const City = forwardRef<CityHandle, Props>(function City(
         onPointerLeave={() => setHover(null)}
       />
       <div className="map-location">
-        <span className="live-dot" /> The founding neighborhood{' '}
+        <span className="live-dot" />{' '}
+        {tracked ? `Following ${tracked.resident.name}` : 'The living neighborhood'}{' '}
         <span className="map-location-divider">/</span> <span>01</span>
       </div>
+      {tracked && (
+        <div className="follow-status">
+          <span>
+            {tracked.activity === 'sleep'
+              ? 'Sleeping at home'
+              : tracked.activity === 'home'
+                ? 'Relaxing at home'
+                : tracked.activity === 'work'
+                  ? 'Working at home'
+                  : 'Out for a stroll'}
+          </span>
+          <button onClick={stopFollowing}>Stop following</button>
+        </div>
+      )}
       <div className="compass" aria-hidden="true">
         <span>N</span>
         <div>↑</div>
@@ -251,7 +334,13 @@ const City = forwardRef<CityHandle, Props>(function City(
           <Minus size={17} />
         </button>
         <span className="control-divider" />
-        <button aria-label="Reset map view" onClick={reset}>
+        <button
+          aria-label="Reset map view"
+          onClick={() => {
+            onStopFollowing();
+            reset();
+          }}
+        >
           <Crosshair size={17} />
         </button>
       </div>

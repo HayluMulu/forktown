@@ -1,5 +1,450 @@
 @layer reset, base, components, responsive;
 
+@layer components {
+  .house-files {
+    padding: 24px 30px 30px;
+  }
+  .house-files > .modal-intro {
+    margin: 16px 0;
+  }
+  .house-files-layout {
+    display: grid;
+    grid-template-columns: minmax(180px, 1fr) minmax(0, 2fr);
+    gap: 20px;
+    margin: 20px 0;
+  }
+  .house-file-list {
+    display: flex;
+    flex-direction: column;
+    max-height: 480px;
+    overflow-y: auto;
+    border: 1px solid #e2e7d6;
+    border-radius: 7px;
+  }
+  .house-file-list > strong {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 14px;
+    font-size: 13px;
+  }
+  .house-file-list > strong > span {
+    font-weight: 400;
+  }
+  .house-file-list > button {
+    padding: 12px 14px;
+    text-align: left;
+    border-top: 1px solid #e2e7d6;
+    overflow-wrap: anywhere;
+  }
+  .house-file-list > button[aria-pressed='true'] {
+    background: #e5eddb;
+  }
+  .house-file-list > button > span {
+    display: block;
+    font: 11px var(--mono);
+  }
+  .house-file-list small {
+    display: block;
+    margin-top: 5px;
+    color: #65715c;
+  }
+  .house-files .code-export pre {
+    max-height: 440px;
+    overflow-y: auto;
+  }
+  .house-files-note {
+    font-size: 12px;
+    line-height: 1.7;
+    color: #65715c;
+    margin: 12px 0;
+  }
+  .house-file-actions {
+    margin: 18px 0;
+  }
+  .builder-actions {
+    flex-wrap: wrap;
+  }
+  @media (max-width: 600px) {
+    .house-files {
+      padding: 18px;
+    }
+    .house-files-layout {
+      grid-template-columns: 1fr;
+    }
+    .house-file-list {
+      max-height: 200px;
+    }
+  }
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
+  .town-clock {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+    padding: 14px 20px;
+    border: 1px solid var(--line);
+    border-bottom: 0;
+    border-radius: 12px 12px 0 0;
+    background: var(--surface);
+  }
+  .clock-now,
+  .clock-playback {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .clock-now {
+    color: var(--green);
+  }
+  .clock-now strong {
+    font: 13px var(--mono);
+  }
+  .clock-now span {
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: capitalize;
+  }
+  .clock-play {
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    border: 1px solid var(--line);
+    border-radius: 50%;
+    background: var(--green-pale);
+  }
+
+  .clock-sync {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 10px;
+    color: var(--green);
+    white-space: nowrap;
+  }
+  .paused-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--muted);
+  }
+  .clock-hint {
+    font-size: 10px;
+    color: var(--muted);
+  }
+  .follow-status {
+    position: absolute;
+    top: 48px;
+    left: 20px;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    padding: 8px 10px;
+    border: 1px solid #d9dfce;
+    background: #fdfcf8ed;
+    border-radius: 6px;
+    font-size: 10px;
+    color: #516b42;
+  }
+  .follow-status button {
+    border: 0;
+    border-left: 1px solid #d9dfce;
+    padding-left: 10px;
+    background: transparent;
+    font-size: 10px;
+    text-decoration: underline;
+  }
+  .neighbors-section {
+    margin: 62px 0;
+  }
+  .neighbors-heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: end;
+    gap: 24px;
+    margin-bottom: 24px;
+  }
+  .neighbors-heading h2 {
+    font: 500 35px/1.2 var(--serif);
+    margin-top: 10px;
+  }
+  .neighbors-heading p {
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.8;
+  }
+  .neighbor-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+  }
+  .neighbor-card {
+    padding: 18px 20px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+  }
+  .neighbor-card.is-followed {
+    border-color: #8caa78;
+    background: #f1f4e9;
+  }
+  .neighbor-identity {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .neighbor-portrait {
+    background: #eef0e4;
+    border-radius: 50%;
+    width: 60px;
+    height: 60px;
+  }
+  .neighbor-identity h3 {
+    font: 500 21px var(--serif);
+    overflow-wrap: anywhere;
+  }
+  .neighbor-identity span {
+    font-size: 10px;
+    color: var(--muted);
+  }
+  .neighbor-activity {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 10px;
+    color: var(--green);
+    margin: 14px 0 8px;
+  }
+  .neighbor-greeting {
+    font: italic 15px var(--serif);
+    min-height: 24px;
+    overflow-wrap: anywhere;
+  }
+  .neighbor-actions {
+    display: flex;
+    justify-content: space-between;
+    border-top: 1px solid var(--line);
+    margin-top: 14px;
+    padding-top: 12px;
+  }
+  .neighbor-actions .text-button {
+    font-size: 10px;
+  }
+  .detail-resident {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .detail-resident strong {
+    display: block;
+    font-size: 11px;
+  }
+  .detail-resident span {
+    display: block;
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+  .detail-sign canvas {
+    width: 100%;
+    max-width: 240px;
+    height: auto;
+    border: 3px solid #b9b5a0;
+    margin-top: 20px;
+  }
+  .detail-sign:empty {
+    display: none;
+  }
+  .fresh-draft {
+    font-size: 10px;
+    margin-top: 12px;
+  }
+  .home-fields:not([hidden]),
+  .customization-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+  .builder-tabs {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 5px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--line);
+  }
+  .builder-tabs button {
+    border: 1px solid transparent;
+    border-radius: 6px;
+    background: transparent;
+    padding: 9px 6px;
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .builder-tabs button span {
+    font: 9px var(--mono);
+    margin-right: 6px;
+    opacity: 0.7;
+  }
+  .builder-tabs button.selected {
+    color: var(--green);
+    background: var(--green-pale);
+    border-color: #d7dfcd;
+  }
+  .builder-resident {
+    display: flex;
+    align-items: center;
+    text-align: left;
+    margin-top: 10px;
+    font: 17px var(--serif);
+  }
+  .builder-resident small {
+    display: block;
+    font:
+      10px 'DM Sans',
+      sans-serif;
+    color: var(--muted);
+    margin-top: 5px;
+    max-width: 150px;
+    overflow-wrap: anywhere;
+  }
+  .paint-row {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+  .paint-field {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 10px;
+    color: var(--green);
+  }
+  .paint-field input {
+    width: 30px;
+    height: 30px;
+    padding: 2px;
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    background: var(--surface);
+    cursor: pointer;
+  }
+  .panel-intro,
+  .sign-help {
+    font-size: 11px;
+    line-height: 1.8;
+    color: var(--muted);
+  }
+  .field small {
+    font-size: 10px;
+    font-weight: 400;
+    color: var(--muted);
+  }
+  .routine-fields {
+    padding: 20px;
+    background: var(--green-pale);
+    border-radius: 8px;
+    display: grid;
+    gap: 14px;
+  }
+  .routine-fields h3 {
+    font: 20px var(--serif);
+  }
+  .routine-fields p,
+  .routine-fields > small {
+    font-size: 10px;
+    color: var(--muted);
+    line-height: 1.7;
+  }
+  .routine-fields .field > span {
+    display: flex;
+    justify-content: space-between;
+  }
+  .sign-artwork {
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+    padding: 24px;
+    gap: 14px;
+    border-radius: 8px;
+    background: #eceee3;
+  }
+  .sign-artwork canvas {
+    max-width: 100%;
+    height: auto;
+    border: 4px solid #b9b5a0;
+    box-shadow: 0 3px 0 #aaa78f;
+  }
+  .sign-artwork span {
+    font: 8px var(--mono);
+    letter-spacing: 1px;
+    color: var(--muted);
+  }
+  .field .sign-source {
+    font: 11px/1.8 var(--mono);
+  }
+  .sign-help p + p {
+    margin-top: 8px;
+  }
+  .code-export pre {
+    max-height: 450px;
+    overflow: auto;
+  }
+}
+@layer responsive {
+  @media (max-width: 760px) {
+    .town-clock {
+      align-items: stretch;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .clock-playback {
+      justify-content: space-between;
+    }
+
+    .clock-hint {
+      font-size: 9px;
+    }
+    .neighbor-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .neighbors-heading {
+      align-items: start;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .builder-resident {
+      margin-top: 0;
+    }
+  }
+  @media (max-width: 460px) {
+    .neighbor-grid {
+      grid-template-columns: 1fr;
+    }
+    .neighbors-heading h2 {
+      font-size: 29px;
+    }
+    .builder-tabs button {
+      font-size: 10px;
+    }
+    .builder-tabs button span {
+      display: none;
+    }
+  }
+}
+
 @layer reset {
   *,
   *::before,
@@ -488,29 +933,7 @@
     outline: 2px solid #739b76;
     outline-offset: 3px;
   }
-  .day-switch {
-    display: flex;
-    background: #f0f1e9;
-    border: 1px solid #e7e8df;
-    border-radius: 5px;
-    padding: 3px;
-    gap: 2px;
-  }
-  .day-switch button {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 5px;
-    padding: 5px 9px;
-    border-radius: 3px;
-    font-size: 10px;
-    color: #919686;
-  }
-  .day-switch button.selected {
-    background: #fffef9;
-    color: #64744f;
-    box-shadow: 0 1px 3px #00000010;
-  }
+
   .town-layout {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 290px;
@@ -2146,15 +2569,11 @@
     .plot-toggle {
       font-size: 9px;
     }
-    .day-switch button {
-      padding: 6px;
-    }
+
     .town-toolbar {
       padding: 11px 14px;
     }
-    .day-switch button span {
-      display: none;
-    }
+
     .map-location {
       font-size: 8px;
     }
@@ -2645,10 +3064,7 @@
       min-width: 44px;
       min-height: 44px;
     }
-    .day-switch button {
-      min-width: 32px;
-      min-height: 32px;
-    }
+
     .directory-tabs button {
       min-height: 40px;
     }

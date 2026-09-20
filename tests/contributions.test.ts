@@ -1,9 +1,21 @@
 import { describe, expect, it } from 'vitest';
 import { draftSchema, placeSchema, validatePlaces, type Place } from '../src/lib/schema';
-import { PLOTS, findPlotAt, getPlot, plotCenter, project, unproject } from '../src/lib/world';
+import {
+  PLOTS,
+  findPlotAt,
+  getPlot,
+  plotCenter,
+  plotEntrance,
+  isRoad,
+  ROAD_MIN,
+  ROAD_MAX_X,
+  ROAD_MAX_Y,
+  project,
+  unproject,
+} from '../src/lib/world';
 import { buildingHit, shade } from '../src/city/render';
 
-const sample: Place = {
+const sample: Place = placeSchema.parse({
   id: 'tiny-library',
   name: 'Tiny Library',
   creator: 'new-neighbor',
@@ -12,7 +24,7 @@ const sample: Place = {
   color: '#759BAF',
   decoration: 'bench',
   story: 'A little library for very big ideas.',
-};
+});
 
 describe('The contribution contract', () => {
   it('preserves unfinished text in a draft while requiring valid rendering options', () => {
@@ -43,7 +55,7 @@ describe('The contribution contract', () => {
     expect(errors).toHaveLength(3);
     expect(errors.join('\n')).toContain('without the @');
     expect(errors.join('\n')).toContain('six-digit hex color');
-    expect(errors.join('\n')).toContain('between A1 and E5');
+    expect(errors.join('\n')).toContain('existing plot from the town map');
   });
   it('rejects duplicate plot claims without silently replacing another place', () => {
     const { errors } = validatePlaces([
@@ -101,14 +113,14 @@ describe('The world stays predictable as people contribute', () => {
     expect(shade('#FFFFFF', 30)).toBe('#ffffff');
     expect(shade('#000000', -30)).toBe('#000000');
   });
-  it('has 25 unique plots, all accepted by the contribution schema', () => {
-    expect(new Set(PLOTS.map((plot) => plot.id)).size).toBe(25);
+  it('has 50 unique plots, all accepted by the contribution schema', () => {
+    expect(new Set(PLOTS.map((plot) => plot.id)).size).toBe(50);
     for (const plot of PLOTS)
       expect(placeSchema.safeParse({ ...sample, plot: plot.id }).success).toBe(true);
   });
   it('keeps the same coordinates for an existing plot regardless of other places', () => {
-    expect(getPlot('B2')).toEqual({ id: 'B2', col: 1, row: 1, x: 5, y: 5 });
-    expect(getPlot('E5')).toEqual({ id: 'E5', col: 4, row: 4, x: 14, y: 14 });
+    expect(getPlot('B2')).toEqual({ id: 'B2', col: 1, row: 1, x: 7, y: 7 });
+    expect(getPlot('E5')).toEqual({ id: 'E5', col: 4, row: 4, x: 19, y: 19 });
   });
   it('round-trips projected coordinates, including negative positions', () => {
     for (const [x, y] of [
@@ -127,6 +139,22 @@ describe('The world stays predictable as people contribute', () => {
     for (const plot of PLOTS) expect(findPlotAt(plot.x + 0.5, plot.y + 0.5)?.id).toBe(plot.id);
     expect(findPlotAt(1, 1)).toBeUndefined();
     expect(findPlotAt(-10, 500)).toBeUndefined();
+  });
+  it('gives every home a selectable three-by-three grass plot bounded by streets', () => {
+    for (const plot of PLOTS) {
+      for (let dx = -1; dx <= 1; dx++)
+        for (let dy = -1; dy <= 1; dy++) {
+          expect(isRoad(plot.x + dx, plot.y + dy)).toBe(false);
+          expect(findPlotAt(plot.x + dx + 0.5, plot.y + dy + 0.5)?.id).toBe(plot.id);
+        }
+      const entrance = plotEntrance(plot);
+      expect(isRoad(Math.floor(entrance.x), Math.floor(entrance.y))).toBe(true);
+      expect(findPlotAt(entrance.x, entrance.y)).toBeUndefined();
+    }
+    for (let x = ROAD_MIN; x <= ROAD_MAX_X; x++)
+      for (let y = ROAD_MIN; y <= ROAD_MAX_Y; y++) {
+        if (isRoad(x, y)) expect(findPlotAt(x + 0.5, y + 0.5)).toBeUndefined();
+      }
   });
   it('selects a tall building by its roof, above the ground tile', () => {
     const center = plotCenter(getPlot(sample.plot)!);

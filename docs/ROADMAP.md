@@ -8,9 +8,21 @@
 - [x] Local builder, preview, export, and contribution guide
 - [x] Day/night view, search, sharing, and mobile layout
 - [x] Contribution validation, meaningful tests, and opt-in publishing
-- [ ] Create the public repository and connect its URL
-- [ ] Publish the town and verify a contribution from a fork
+- [x] Connect the repository URL (currently private)
+- [x] Publish the founding town on GitHub Pages
+- [ ] Verify an external beginner contribution from a fork before public launch
 - [ ] Welcome the first real neighbors
+
+## The living edition
+
+- [x] Custom floors, roofs, windows, gardens, and house details
+- [x] One resident per contribution with a personal look and greeting
+- [x] Three simple routine choices, road strolls, and incidental greetings
+- [x] Shared UTC-based 24-minute day, pause/resume-live, and follow-a-neighbor view
+- [x] Exterior signs using text or restricted HTML/CSS artwork
+- [x] Builder, local saves, examples, validation, and security tests
+- [ ] Owner review of the living edition before deployment
+- [ ] Open the repository to public contributors when the owner is ready
 
 ## Good early community contributions
 
@@ -22,7 +34,7 @@
 
 ## When the first neighborhood fills up
 
-Design stable district ids, connect neighborhoods, and keep existing share links and place coordinates intact. Discuss the contribution contract before changing it.
+Increase the row and column counts in `src/lib/town-config.ts`; see [Expanding the town](EXPANDING_THE_TOWN.md). The town currently supports 50 plots while preserving the original 25 addresses and coordinates. Separate districts remain a future design choice for much larger towns.
 
 ## Later experiments
 

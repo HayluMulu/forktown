@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowRight,
   Check,
   Copy,
   Download,
   ExternalLink,
+  FolderOpen,
   Paintbrush,
   Save,
   Sparkles,
@@ -22,21 +23,38 @@ import { repositoryUrl } from '../lib/places';
 import { localSaveAvailable, saveToProject } from '../lib/local-save';
 import BuildingPreview from './BuildingPreview';
 import Modal from './Modal';
+import HouseFiles from './HouseFiles';
+import ResidentPreview from './ResidentPreview';
+import { HomeDetails, NeighborDetails, SignDetails } from './Customization';
 
 const COLORS = ['#789B76', '#C97878', '#759BAF', '#AD88AE', '#D0AA65', '#BE8E68'];
-const initial = (plot: string): Place => ({
-  id: 'my-little-place',
-  name: 'My Little Place',
-  creator: '',
-  plot,
-  building: 'cottage',
-  color: COLORS[0],
-  decoration: 'flowers',
-  story: 'A small corner of the internet, made with curiosity and a little courage.',
-});
-const storageKey = 'forktown-draft-v1';
+const initial = (plot: string, places: Place[]): Place =>
+  draftSchema.parse({
+    id: availableId('my-little-place', places),
+    name: 'My Little Place',
+    creator: '',
+    plot,
+    building: 'cottage',
+    color: COLORS[0],
+    decoration: 'flowers',
+    story: 'A small corner of the internet, made with curiosity and a little courage.',
+  });
+const storageKey = 'forktown-draft-v2';
+function availableId(name: string, places: Place[]) {
+  const base =
+    name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '')
+      .slice(0, 34)
+      .replace(/-$/, '') || 'my-place';
+  let id = base.length < 3 ? `my-${base}` : base;
+  let suffix = 2;
+  while (places.some((place) => place.id === id)) id = `${base}-${suffix++}`;
+  return id;
+}
 
-export default function Contribute({
+const Contribute = memo(function Contribute({
   plot,
   places,
   onClose,
@@ -64,9 +82,12 @@ export default function Contribute({
     } catch {
       /* A stale draft should never prevent a new contribution. */
     }
-    return initial(plot ?? available[0]?.id ?? 'A1');
+    return initial(plot ?? available[0]?.id ?? 'A1', places);
   });
-  const [step, setStep] = useState<'design' | 'submit'>('design');
+  const [panel, setPanel] = useState<'home' | 'neighbor' | 'sign'>('home');
+  const [customId, setCustomId] = useState(() => draft.id !== availableId(draft.name, places));
+  const [step, setStep] = useState<'design' | 'submit' | 'files'>('design');
+  const [filesReturn, setFilesReturn] = useState<'design' | 'submit'>('design');
   const [attempted, setAttempted] = useState(false);
   const [copied, setCopied] = useState(false);
   const [notice, setNotice] = useState('');
@@ -74,13 +95,20 @@ export default function Contribute({
   const [saving, setSaving] = useState(false);
   const [savedFile, setSavedFile] = useState('');
   const saveInProgress = useRef(false);
-  const parsed = placeSchema.safeParse(draft);
+  const parsed = useMemo(() => placeSchema.safeParse(draft), [draft]);
+  const buildingChoices = useMemo(
+    () => BUILDING_TYPES.map((building) => ({ ...draft, building })),
+    [draft],
+  );
   const errors: Record<string, string> = {};
   if (!parsed.success)
     parsed.error.issues.forEach((issue) => {
       const field = String(issue.path[0]);
       errors[field] ??= issue.message;
     });
+  if (draft.creator.toLowerCase() === 'forktown')
+    errors.creator =
+      'Use your GitHub username. The forktown credit is reserved for starter places.';
   if (places.some((place) => place.id === draft.id))
     errors.id = 'This id is already in the city. Choose a different one.';
   if (occupied.has(draft.plot)) errors.plot = 'This plot is occupied. Choose an empty plot.';
@@ -97,10 +125,18 @@ export default function Contribute({
   }, [draft]);
   const update = <K extends keyof Place>(key: K, value: Place[K]) => {
     setCopied(false);
-    setDraft((old) => ({ ...old, [key]: value }));
+    setNotice('');
+    if (key === 'id') setCustomId(true);
+    setDraft((old) => ({
+      ...old,
+      [key]: value,
+      ...(key === 'name' && !customId ? { id: availableId(String(value), places) } : {}),
+    }));
   };
   function showErrors() {
     setAttempted(true);
+    const first = Object.keys(errors)[0];
+    setPanel(first === 'resident' ? 'neighbor' : first === 'sign' ? 'sign' : 'home');
     setNotice('A few details need a little attention. Check the highlighted fields.');
     requestAnimationFrame(() =>
       form.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus(),
@@ -169,20 +205,34 @@ export default function Contribute({
     ) : null;
   return (
     <Modal
-      title={step === 'design' ? 'Make yourself at home.' : 'Your place starts here.'}
+      title={
+        step === 'files'
+          ? 'The files that make a town.'
+          : step === 'design'
+            ? 'Make yourself at home.'
+            : 'Your place starts here.'
+      }
       onClose={onClose}
       wide
     >
-      <div className="contribute-progress">
-        <span className={step === 'design' ? 'current' : 'done'}>
-          <b>{step === 'submit' ? <Check size={12} /> : 1}</b> Make it yours
-        </span>
-        <i />
-        <span className={step === 'submit' ? 'current' : ''}>
-          <b>2</b> Share with the town
-        </span>
-      </div>
-      {step === 'design' ? (
+      {step !== 'files' && (
+        <div className="contribute-progress">
+          <span className={step === 'design' ? 'current' : 'done'}>
+            <b>{step === 'submit' ? <Check size={12} /> : 1}</b> Make it yours
+          </span>
+          <i />
+          <span className={step === 'submit' ? 'current' : ''}>
+            <b>2</b> Share with the town
+          </span>
+        </div>
+      )}
+      {step === 'files' ? (
+        <HouseFiles
+          initialId={savedFile ? draft.id : undefined}
+          saved={savedFile ? { id: draft.id, name: draft.name, json } : undefined}
+          onBack={() => setStep(filesReturn)}
+        />
+      ) : step === 'design' ? (
         <div className="builder-layout">
           <div className="builder-preview">
             <span className="eyebrow">YOUR LITTLE CORNER</span>
@@ -190,6 +240,13 @@ export default function Contribute({
               <BuildingPreview place={draft} size={230} />
             </div>
             <h3>{draft.name || 'Your new place'}</h3>
+            <div className="builder-resident">
+              <ResidentPreview resident={draft.resident} size={72} />
+              <span>
+                {draft.resident.name || 'Your neighbor'}
+                <small>{draft.resident.greeting || 'Hello!'}</small>
+              </span>
+            </div>
             <span className="mono muted">
               Plot {draft.plot} · {TYPE_LABELS[draft.building]}
             </span>
@@ -198,6 +255,19 @@ export default function Contribute({
               <br />
               Give it a little personality.
             </p>
+            <button
+              type="button"
+              className="text-button fresh-draft"
+              onClick={() => {
+                setDraft(initial(plot ?? available[0]?.id ?? 'A1', places));
+                setCustomId(false);
+                setPanel('home');
+                setAttempted(false);
+                setNotice('Started a fresh draft.');
+              }}
+            >
+              Start fresh
+            </button>
             <span className="draft-label">
               <span className="live-dot" /> Private draft ·{' '}
               {draftSaved ? 'saved on this device' : 'this visit only'}
@@ -212,136 +282,175 @@ export default function Contribute({
             }}
             noValidate
           >
-            <div className="field-row">
-              <label className="field">
-                Place name
-                <input
-                  aria-label="Place name"
-                  autoFocus
-                  value={draft.name}
-                  maxLength={32}
-                  onChange={(event) => update('name', event.target.value)}
-                  aria-invalid={attempted && !!errors.name}
-                  aria-describedby={attempted && errors.name ? 'error-name' : undefined}
-                />
-                {fieldError('name')}
-              </label>
-              <label className="field">
-                GitHub username
-                <span className="input-prefix">
-                  <span>@</span>
-                  <input
-                    aria-label="GitHub username"
-                    value={draft.creator}
-                    placeholder="your-username"
-                    maxLength={39}
-                    onChange={(event) => update('creator', event.target.value)}
-                    aria-invalid={attempted && !!errors.creator}
-                    aria-describedby={attempted && errors.creator ? 'error-creator' : undefined}
-                  />
-                </span>
-                {fieldError('creator')}
-              </label>
+            <div className="builder-tabs" role="group" aria-label="Customize your place">
+              {(['home', 'neighbor', 'sign'] as const).map((value, index) => (
+                <button
+                  key={value}
+                  type="button"
+                  aria-pressed={panel === value}
+                  className={panel === value ? 'selected' : ''}
+                  onClick={() => setPanel(value)}
+                >
+                  <span>0{index + 1}</span>
+                  {value === 'home' ? 'Home' : value === 'neighbor' ? 'Neighbor' : 'Outdoor sign'}
+                </button>
+              ))}
             </div>
-            <fieldset className="building-picker">
-              <legend>A place to…</legend>
-              <div>
-                {BUILDING_TYPES.map((type) => (
-                  <button
-                    type="button"
-                    key={type}
-                    className={draft.building === type ? 'selected' : ''}
-                    aria-pressed={draft.building === type}
-                    onClick={() => update('building', type)}
-                  >
-                    <BuildingPreview place={{ ...draft, building: type }} size={62} />
-                    <span>{TYPE_LABELS[type]}</span>
-                  </button>
-                ))}
+            {panel === 'neighbor' && (
+              <>
+                <NeighborDetails
+                  resident={draft.resident}
+                  attempted={attempted}
+                  update={(value) => update('resident', value)}
+                />
+                {fieldError('resident')}
+              </>
+            )}
+            {panel === 'sign' && (
+              <>
+                <SignDetails sign={draft.sign} update={(value) => update('sign', value)} />
+              </>
+            )}
+            <div hidden={panel !== 'home'} className="home-fields">
+              <div className="field-row">
+                <label className="field">
+                  Place name
+                  <input
+                    aria-label="Place name"
+                    autoFocus
+                    value={draft.name}
+                    maxLength={32}
+                    onChange={(event) => update('name', event.target.value)}
+                    aria-invalid={attempted && !!errors.name}
+                    aria-describedby={attempted && errors.name ? 'error-name' : undefined}
+                  />
+                  {fieldError('name')}
+                </label>
+                <label className="field">
+                  GitHub username
+                  <span className="input-prefix">
+                    <span>@</span>
+                    <input
+                      aria-label="GitHub username"
+                      value={draft.creator}
+                      placeholder="your-username"
+                      maxLength={39}
+                      onChange={(event) => update('creator', event.target.value)}
+                      aria-invalid={attempted && !!errors.creator}
+                      aria-describedby={attempted && errors.creator ? 'error-creator' : undefined}
+                    />
+                  </span>
+                  {fieldError('creator')}
+                </label>
               </div>
-            </fieldset>
-            <div className="field-row">
-              <fieldset className="color-picker">
-                <legend>A splash of color</legend>
+              <fieldset className="building-picker">
+                <legend>A place to…</legend>
                 <div>
-                  {COLORS.map((color) => (
+                  {BUILDING_TYPES.map((type) => (
                     <button
                       type="button"
-                      aria-label={`Use color ${color}`}
-                      aria-pressed={draft.color === color}
-                      className={draft.color === color ? 'selected' : ''}
-                      key={color}
-                      style={{ backgroundColor: color }}
-                      onClick={() => update('color', color)}
+                      key={type}
+                      className={draft.building === type ? 'selected' : ''}
+                      aria-pressed={draft.building === type}
+                      onClick={() => update('building', type)}
                     >
-                      {draft.color === color && <Check size={15} />}
+                      <BuildingPreview
+                        place={buildingChoices.find((place) => place.building === type)!}
+                        size={62}
+                      />
+                      <span>{TYPE_LABELS[type]}</span>
                     </button>
                   ))}
-                  <label className="custom-color" aria-label="Choose a custom color">
-                    <Paintbrush size={14} />
-                    <input
-                      type="color"
-                      aria-label="Custom building color"
-                      value={draft.color}
-                      onChange={(event) => update('color', event.target.value)}
-                    />
-                  </label>
                 </div>
               </fieldset>
+              <div className="field-row">
+                <fieldset className="color-picker">
+                  <legend>A splash of color</legend>
+                  <div>
+                    {COLORS.map((color) => (
+                      <button
+                        type="button"
+                        aria-label={`Use color ${color}`}
+                        aria-pressed={draft.color === color}
+                        className={draft.color === color ? 'selected' : ''}
+                        key={color}
+                        style={{ backgroundColor: color }}
+                        onClick={() => update('color', color)}
+                      >
+                        {draft.color === color && <Check size={15} />}
+                      </button>
+                    ))}
+                    <label className="custom-color" aria-label="Choose a custom color">
+                      <Paintbrush size={14} />
+                      <input
+                        type="color"
+                        aria-label="Custom building color"
+                        value={draft.color}
+                        onChange={(event) => update('color', event.target.value)}
+                      />
+                    </label>
+                  </div>
+                </fieldset>
+                <label className="field">
+                  Finishing touch
+                  <select
+                    value={draft.decoration}
+                    onChange={(event) =>
+                      update('decoration', event.target.value as Place['decoration'])
+                    }
+                  >
+                    {DECORATIONS.map((value) => (
+                      <option value={value} key={value}>
+                        {value[0].toUpperCase() + value.slice(1)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              <HomeDetails draft={draft} update={(value) => update('design', value)} />
+              {fieldError('design')}
               <label className="field">
-                Finishing touch
-                <select
-                  value={draft.decoration}
-                  onChange={(event) =>
-                    update('decoration', event.target.value as Place['decoration'])
-                  }
-                >
-                  {DECORATIONS.map((value) => (
-                    <option value={value} key={value}>
-                      {value[0].toUpperCase() + value.slice(1)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-            <label className="field">
-              A little story <span className="field-optional">Make it personal.</span>
-              <textarea
-                aria-label="A little story"
-                rows={3}
-                value={draft.story}
-                maxLength={180}
-                onChange={(event) => update('story', event.target.value)}
-                aria-invalid={attempted && !!errors.story}
-                aria-describedby={attempted && errors.story ? 'error-story' : undefined}
-              />
-              <span className="character-count">{draft.story.length}/180</span>
-              {fieldError('story')}
-            </label>
-            <div className="field-row">
-              <label className="field">
-                File id
-                <input
-                  aria-label="File id"
-                  value={draft.id}
-                  maxLength={40}
-                  onChange={(event) => update('id', event.target.value)}
-                  aria-invalid={attempted && !!errors.id}
-                  aria-describedby={attempted && errors.id ? 'error-id' : undefined}
+                A little story <span className="field-optional">Make it personal.</span>
+                <textarea
+                  aria-label="A little story"
+                  rows={3}
+                  value={draft.story}
+                  maxLength={180}
+                  onChange={(event) => update('story', event.target.value)}
+                  aria-invalid={attempted && !!errors.story}
+                  aria-describedby={attempted && errors.story ? 'error-story' : undefined}
                 />
-                {fieldError('id')}
+                <span className="character-count">{draft.story.length}/180</span>
+                {fieldError('story')}
               </label>
-              <label className="field">
-                Your plot
-                <select value={draft.plot} onChange={(event) => update('plot', event.target.value)}>
-                  {available.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      Plot {p.id}
-                    </option>
-                  ))}
-                </select>
-                {fieldError('plot')}
-              </label>
+              <div className="field-row">
+                <label className="field">
+                  File id
+                  <input
+                    aria-label="File id"
+                    value={draft.id}
+                    maxLength={40}
+                    onChange={(event) => update('id', event.target.value)}
+                    aria-invalid={attempted && !!errors.id}
+                    aria-describedby={attempted && errors.id ? 'error-id' : undefined}
+                  />
+                  {fieldError('id')}
+                </label>
+                <label className="field">
+                  Your plot
+                  <select
+                    value={draft.plot}
+                    onChange={(event) => update('plot', event.target.value)}
+                  >
+                    {available.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        Plot {p.id}
+                      </option>
+                    ))}
+                  </select>
+                  {fieldError('plot')}
+                </label>
+              </div>
             </div>
             {notice && (
               <div role="alert" className="form-notice">
@@ -349,6 +458,16 @@ export default function Contribute({
               </div>
             )}
             <div className="builder-actions">
+              <button
+                type="button"
+                className="text-button"
+                onClick={() => {
+                  setFilesReturn('design');
+                  setStep('files');
+                }}
+              >
+                <FolderOpen size={15} /> Browse house files
+              </button>
               <button
                 type="button"
                 className="text-button"
@@ -377,6 +496,21 @@ export default function Contribute({
                 ? 'Save your place straight into the project running on this computer. Then share it with the town through your pull request.'
                 : 'Your building is ready for its first pull request. Here’s how to give it a permanent home.'}
             </p>
+            <div className="house-file-actions">
+              <button
+                className="button button-secondary"
+                onClick={() => {
+                  setFilesReturn('submit');
+                  setStep('files');
+                }}
+              >
+                <FolderOpen size={15} /> {savedFile ? 'See my saved JSON' : 'Browse house files'}
+              </button>
+              <p className="house-files-note">
+                Previewing or downloading a house does not add it to the shared town. Your pull
+                request is the contribution.
+              </p>
+            </div>
             <ol className="contribution-steps">
               <li>
                 <span>1</span>
@@ -527,4 +661,5 @@ export default function Contribute({
       )}
     </Modal>
   );
-}
+});
+export default Contribute;

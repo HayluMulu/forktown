@@ -1,10 +1,10 @@
 # Forktown 🌱
 
-**A little pixel city, built one pull request at a time.**
+**A living pixel town, built one pull request at a time.**
 
-Make your first open-source contribution a place of your own. Add a café, a cottage, a bookshop, or a tiny observatory with one JSON file. After review and merging, the shared city rebuilds with your place, your name, and a link to share.
+Make your first open-source contribution a place of your own. Design a home, give its resident a simple daily rhythm, and add your own outdoor sign with one JSON file. After review and merging, the shared city rebuilds with your place, your name, and a link to share.
 
-Forktown begins with eight clearly labeled starter places and 17 open plots. Those starter places use `creator: "forktown"` as a project credit; they are not real community contributions or a GitHub account endorsement.
+Forktown begins with eight clearly labeled starter places on a 50-plot map. Those starter places use `creator: "forktown"` as a project credit; they are not real community contributions or a GitHub account endorsement.
 
 ## Take a look locally
 
@@ -19,19 +19,23 @@ Open `http://localhost:5173`. No accounts, API keys, database, or remote service
 
 ## Make your first contribution
 
-1. Open the city and choose **Build a place**.
-2. Choose a building, color, story, decoration, and an empty plot.
-3. In your local checkout, choose **Continue to save → Save to my project**. The builder creates your JSON in `places/` and updates the local city. On a hosted site, download the JSON instead.
-4. Commit the new file on a branch in your fork. If you downloaded it, first add it to `places/`.
+1. Fork and clone the repository, create a contribution branch, and run your local town using the commands above.
+2. Choose **Build a place**. Use Home, Neighbor, and Outdoor sign to customize it.
+3. Choose **Continue to save → Save to my project** to create your JSON in `places/`.
+4. Open **See my saved JSON** to learn from your file, then commit and push it.
 5. Open a pull request against the original repository.
 
-Read the [step-by-step contribution guide](CONTRIBUTING.md). You can do the whole contribution through GitHub’s browser interface. A builder preview is private to your current visit; it becomes part of the public city only after a pull request is reviewed, merged, and deployed. The builder saves draft details on your device, including unfinished text, for your next visit.
+Read the [step-by-step contribution guide](CONTRIBUTING.md). The published GitHub Pages site is for exploring and reading house files; its builder is disabled. A local preview stays in your own town until a pull request is reviewed, merged, and deployed. Local builder drafts are saved on your device for your next visit.
 
 ## What works
 
 - An original isometric city renderer, with trees, roads, a river, little residents, and six building styles.
 - Mouse and touch panning, zoom buttons, scroll zoom, and keyboard map controls.
-- Day and night palettes, lit windows, plot labels, and stable plot coordinates.
+- Custom floors, roof shapes, wall and trim colors, window styles, gardens, porches, and balconies.
+- Residents with names, outfits, accessories, greetings, and three simple daily choices.
+- Road-following strolls with four directional walking views, distance-based footsteps, occasional neighbor greetings, bedtime, and a camera that follows a resident.
+- A shared UTC-based 24-minute town day, automatic day/night lighting, pause/resume-live, and reduced-motion support.
+- Exterior signs: simple text or a restricted HTML/CSS artwork language, drawn as noninteractive canvas textures.
 - Searchable place directory and open-plot directory, including a keyboard-accessible alternative to the map.
 - Place stories, contributor credit, and shareable `#place=id` links without server routing.
 - A live building editor, local preview, direct saves to your local checkout, JSON export, and browser-based contribution instructions.
@@ -47,7 +51,11 @@ places/                    One JSON file per place — start here!
 examples/                  A copyable contribution example
 src/lib/schema.ts          The contribution contract and friendly validator
 src/lib/world.ts           Stable plot coordinates and projection math
-src/city/render.ts         Original procedural pixel artwork and world renderer
+src/city/render.ts         Terrain and depth-sorted world renderer
+src/city/houses.ts         Customizable homes and exterior sign textures
+src/city/residents.ts      Pixel resident artwork
+src/lib/simulation.ts      Deterministic road routes and daily routines
+src/lib/sign.ts            Restricted HTML/CSS-to-artwork compiler
 src/components/City.tsx    Map interaction and accessible controls
 src/components/Contribute.tsx  Building editor and JSON export
 src/App.tsx                The town, directory, and onboarding
@@ -78,8 +86,12 @@ See [publishing](docs/PUBLISHING.md). Creating this local project does not creat
 
 ## A foundation for more
 
-This first edition deliberately focuses on a good first contribution. There are no accounts, leaderboards, real-time multiplayer, or automatic merges. Every place has a bounded plot and reviewed data. New districts, original sprites, more building types, and richer interactions can follow the community’s needs.
+The living edition keeps the first contribution small. Morning, afternoon, and evening each use one choice: stroll, work at home, or relax at home. Nights are for sleeping. The clock follows UTC: one real minute is one town hour, with a new town day every 24 real minutes. Visitors at the same moment see the same daily phase when their device clocks agree. There are no accounts, leaderboards, real-time multiplayer, or automatic merges. Every place has a bounded plot and reviewed data. New districts, original sprites, more building types, and richer interactions can follow the community’s needs.
 
 See [architecture and extension points](docs/ARCHITECTURE.md) and [the roadmap](docs/ROADMAP.md).
 
 Be kind, stay curious, and help the next person find their way in. [Code of conduct](CODE_OF_CONDUCT.md) · [MIT license](LICENSE)
+
+## Growing the town
+
+Change the row and column counts in `src/lib/town-config.ts` to add plots without moving existing homes. Roads, validation, the builder, and camera framing follow automatically. See [Expanding the town](docs/EXPANDING_THE_TOWN.md) for examples and compatibility rules.
