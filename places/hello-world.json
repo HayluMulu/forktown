@@ -1,0 +1,10 @@
+{
+  "id": "hello-world",
+  "name": "Hello, World!",
+  "creator": "forktown",
+  "plot": "C2",
+  "building": "cottage",
+  "color": "#789B76",
+  "decoration": "mailbox",
+  "story": "Every adventure starts somewhere. This little cottage is a reminder that your first contribution belongs here."
+}

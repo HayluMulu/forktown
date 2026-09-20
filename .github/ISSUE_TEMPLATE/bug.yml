@@ -1,0 +1,18 @@
+name: Something in town is broken
+description: Help us make the neighborhood work better.
+title: 'Bug: '
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Tell us what you expected and what you saw instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: How can we see it too?
+      description: Include the place, steps, browser, and device if you can. Screenshots are welcome.
+    validations:
+      required: true

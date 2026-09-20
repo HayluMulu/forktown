@@ -1,0 +1,11 @@
+name: A little help with my first contribution
+description: There are no silly questions here.
+title: 'Help: '
+body:
+  - type: textarea
+    id: stuck
+    attributes:
+      label: Where are you stuck?
+      description: Tell us which step you reached and what happened. Never include tokens, passwords, or private information.
+    validations:
+      required: true

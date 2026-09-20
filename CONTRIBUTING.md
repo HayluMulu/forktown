@@ -1,0 +1,85 @@
+# Welcome, neighbor
+
+You don’t need to be an expert to contribute to Forktown. A thoughtful first contribution is a small place with your own name, style, and story.
+
+## The easiest route: use your browser
+
+1. Visit the city and click **Build a place**, or select a plot from **Open plots**.
+2. Add your GitHub username without `@`, choose a building, and make it yours. Choose a unique file id such as `sam-moon-cafe`.
+3. Click **Get my place file**, then **Download**. Keep this file for the next steps.
+4. On the original GitHub repository, click **Fork** to create your own copy.
+5. In your fork, open the `places` folder. Choose **Add file → Upload files**, upload your downloaded `.json` file, and commit the change with a message such as `Add Sam's Moon Cafe`.
+6. Use **Contribute → Open pull request** in your fork. Check that the base repository is the original Forktown repository and the head repository is your fork.
+7. Give the pull request a friendly title, complete the short checklist, and submit it.
+
+Our checks will validate the file. A maintainer reviews the story, credit, and change before merging. Once the updated site is deployed, your place appears in the neighborhood.
+
+If you receive feedback, edit the file in the same branch of your fork. Your existing pull request updates automatically. You don’t need another pull request.
+
+## Or write one file yourself
+
+Copy `examples/my-little-place.json` to `places/your-unique-id.json`. Do not change the example itself. Here is the contract:
+
+```json
+{
+  "id": "sam-moon-cafe",
+  "name": "Sam’s Moon Café",
+  "creator": "your-github-username",
+  "plot": "A1",
+  "building": "cafe",
+  "color": "#C97878",
+  "decoration": "flowers",
+  "story": "Coffee for anyone fixing one last bug. There is always a seat by the window."
+}
+```
+
+`A1` is an example. Check that your chosen plot is still open before submitting.
+
+| Field        | What to put here                                                                                                                   |
+| ------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `id`         | A unique 3–40 character id: lowercase letters, numbers, and single hyphens. The file must have this same name followed by `.json`. |
+| `name`       | A place name, 3–32 characters. International characters are welcome.                                                               |
+| `creator`    | Your real GitHub username, without `@`. The starter-only credit `forktown` is reserved.                                            |
+| `plot`       | An unoccupied plot from `A1` through `E5`.                                                                                         |
+| `building`   | `cottage`, `cafe`, `bookshop`, `greenhouse`, `studio`, or `observatory`.                                                           |
+| `color`      | A six-digit hex color, such as `#789B76`.                                                                                          |
+| `decoration` | `flowers`, `tree`, `bench`, or `mailbox`.                                                                                          |
+| `story`      | A personal description of 10–180 characters.                                                                                       |
+
+Add only your own place file. There is no shared list to edit. Plot positions remain fixed as the town grows.
+
+## If two people choose the same plot
+
+Choosing a plot in the builder does **not** reserve it. The first accepted contribution gets the plot. If it is occupied before yours is merged, choose another open plot and update only your file’s `plot` field. The automatic check will explain the conflict.
+
+## Develop locally
+
+```sh
+git clone YOUR_FORK_URL
+cd YOUR_FORK_DIRECTORY
+npm ci
+npm run dev
+```
+
+Add your file to `places/`, and the city reloads automatically. Before sending a pull request:
+
+```sh
+npm run check
+```
+
+You can also run only `npm run validate` for a quick data check. The check points to the exact file and field that needs attention.
+
+## A few things that help everyone
+
+- Give credit honestly. Maintainers check the username against the pull request author; the JSON validator cannot verify account ownership.
+- Start with one place. You can propose another thoughtful addition or improve the shared world later.
+- Keep names and stories welcoming. Avoid advertising, harassment, and personal information about other people.
+- Don’t overwrite someone else’s place. For a collaborative change, explain it and get the creator involved.
+- Use your own work, or work you have permission to contribute under the project’s MIT license.
+- Ask for help in an issue if you get stuck. Being new is welcome here.
+
+## Other ways to help
+
+Improve the guide, report a reproducible bug, test the site with a screen reader, add translations, draw a new building style in the renderer, or help plan the next neighborhood. For a new mechanism or a large change, open an issue first so we can agree on the shape of it.
+
+Implementation notes live in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Please keep meaningful tests for contribution rules, geometry, and other behavior that newcomers depend on.

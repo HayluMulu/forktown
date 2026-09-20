@@ -1,0 +1,17 @@
+name: An idea for the neighborhood
+description: A building, a feature, a guide, or something wonderfully unexpected.
+title: 'Idea: '
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: What do you have in mind?
+      description: Who would it help, and what might it look like?
+    validations:
+      required: true
+  - type: checkboxes
+    id: help
+    attributes:
+      label: Want to help build it?
+      options:
+        - label: I would like to work on this, with a little guidance if needed.
