@@ -6,6 +6,7 @@ import {
   Download,
   ExternalLink,
   Paintbrush,
+  Save,
   Sparkles,
 } from 'lucide-react';
 import {
@@ -18,6 +19,7 @@ import {
 } from '../lib/schema';
 import { PLOTS } from '../lib/world';
 import { repositoryUrl } from '../lib/places';
+import { localSaveAvailable, saveToProject } from '../lib/local-save';
 import BuildingPreview from './BuildingPreview';
 import Modal from './Modal';
 
@@ -69,6 +71,9 @@ export default function Contribute({
   const [copied, setCopied] = useState(false);
   const [notice, setNotice] = useState('');
   const [draftSaved, setDraftSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [savedFile, setSavedFile] = useState('');
+  const saveInProgress = useRef(false);
   const parsed = placeSchema.safeParse(draft);
   const errors: Record<string, string> = {};
   if (!parsed.success)
@@ -125,6 +130,36 @@ export default function Contribute({
     anchor.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
     setNotice(`Downloaded ${draft.id}.json. Add it to the places folder in your fork.`);
+  }
+  async function save() {
+    if (saveInProgress.current || savedFile) return;
+    if (!valid || !parsed.success) {
+      setStep('design');
+      showErrors();
+      return;
+    }
+    saveInProgress.current = true;
+    setSaving(true);
+    setNotice('');
+    try {
+      const file = await saveToProject(parsed.data);
+      setSavedFile(file);
+      setNotice(
+        `Saved ${file}. Your place is now in this local city. Commit this file and open your pull request when you’re ready.`,
+      );
+      try {
+        localStorage.removeItem(storageKey);
+      } catch {
+        /* Saving the actual file succeeds even when draft storage is unavailable. */
+      }
+    } catch (error) {
+      setNotice(
+        error instanceof Error ? error.message : 'Could not save this place. Please try again.',
+      );
+    } finally {
+      saveInProgress.current = false;
+      setSaving(false);
+    }
   }
   const fieldError = (key: keyof Place) =>
     attempted && errors[key] ? (
@@ -328,7 +363,8 @@ export default function Contribute({
                 <Sparkles size={15} /> Preview in town
               </button>
               <button type="submit" className="button button-primary">
-                Get my place file <ArrowRight size={16} />
+                {localSaveAvailable ? 'Continue to save' : 'Get my place file'}{' '}
+                <ArrowRight size={16} />
               </button>
             </div>
           </form>
@@ -337,24 +373,40 @@ export default function Contribute({
         <div className="submit-layout">
           <div className="submit-guide">
             <p className="modal-intro">
-              Your building is ready for its first pull request. Here’s how to give it a permanent
-              home.
+              {localSaveAvailable
+                ? 'Save your place straight into the project running on this computer. Then share it with the town through your pull request.'
+                : 'Your building is ready for its first pull request. Here’s how to give it a permanent home.'}
             </p>
             <ol className="contribution-steps">
               <li>
                 <span>1</span>
                 <div>
-                  <h3>Fork the repository</h3>
-                  <p>Create your own copy of Forktown on GitHub.</p>
+                  <h3>{localSaveAvailable ? 'Save your place' : 'Fork the repository'}</h3>
+                  <p>
+                    {localSaveAvailable ? (
+                      <>
+                        Click <strong>Save to my project</strong> to create{' '}
+                        <code>places/{draft.id}.json</code> in this local checkout.
+                      </>
+                    ) : (
+                      'Create your own copy of Forktown on GitHub.'
+                    )}
+                  </p>
                 </div>
               </li>
               <li>
                 <span>2</span>
                 <div>
-                  <h3>Add one little file</h3>
+                  <h3>{localSaveAvailable ? 'Commit your new file' : 'Add one little file'}</h3>
                   <p>
-                    Upload <code>{draft.id}.json</code> to the <code>places/</code> folder in your
-                    fork. You can do this in your browser.
+                    {localSaveAvailable ? (
+                      'Your local city updates as soon as the file is saved. Review it, then commit and push it on your contribution branch.'
+                    ) : (
+                      <>
+                        Upload <code>{draft.id}.json</code> to the <code>places/</code> folder in
+                        your fork. You can do this in your browser.
+                      </>
+                    )}
                   </p>
                 </div>
               </li>
@@ -379,7 +431,17 @@ export default function Contribute({
                 </div>
               </li>
             </ol>
-            {repositoryUrl ? (
+            {localSaveAvailable ? (
+              <div className="local-note">
+                {savedFile ? (
+                  <>
+                    Saved to <code>{savedFile}</code>. Ready for your commit.
+                  </>
+                ) : (
+                  'Saves a new file in this project. You choose when to commit, push, and open your PR.'
+                )}
+              </div>
+            ) : repositoryUrl ? (
               <a
                 className="button button-primary"
                 href={`${repositoryUrl}/fork`}
@@ -394,9 +456,25 @@ export default function Contribute({
                 it’s ready; your file works the same way.
               </div>
             )}
-            <button className="text-button back-to-design" onClick={() => setStep('design')}>
-              ← Back to my design
-            </button>
+            {savedFile ? (
+              <button
+                className="button button-primary back-to-design"
+                onClick={() => {
+                  window.location.hash = `place=${encodeURIComponent(draft.id)}`;
+                  window.location.reload();
+                }}
+              >
+                See my place in town <ArrowRight size={16} />
+              </button>
+            ) : (
+              <button
+                className="text-button back-to-design"
+                disabled={saving}
+                onClick={() => setStep('design')}
+              >
+                ← Back to my design
+              </button>
+            )}
           </div>
           <div className="code-export">
             <div className="code-heading">
@@ -406,17 +484,38 @@ export default function Contribute({
             <pre tabIndex={0} aria-label="Your contribution JSON">
               <code>{json}</code>
             </pre>
+            {localSaveAvailable && (
+              <div className="local-save-action">
+                <button
+                  className="button button-primary full-width"
+                  onClick={save}
+                  disabled={saving || !!savedFile}
+                >
+                  {savedFile ? <Check size={16} /> : <Save size={16} />}
+                  {savedFile
+                    ? 'Saved to my project'
+                    : saving
+                      ? 'Saving your place…'
+                      : 'Save to my project'}
+                </button>
+              </div>
+            )}
             <div className="export-actions">
               <button className="button button-secondary" onClick={copy}>
                 {copied ? <Check size={15} /> : <Copy size={15} />}{' '}
                 {copied ? 'Copied' : 'Copy JSON'}
               </button>
-              <button className="button button-primary" onClick={download}>
+              <button
+                className={`button ${localSaveAvailable ? 'button-secondary' : 'button-primary'}`}
+                onClick={download}
+              >
                 <Download size={15} /> Download
               </button>
             </div>
             <p className="export-footnote">
-              One file. No install needed. A real open-source contribution.
+              {localSaveAvailable
+                ? 'One file in your project. Your first contribution is taking shape.'
+                : 'One file. No install needed. A real open-source contribution.'}
             </p>
             {notice && (
               <p role="status" className="form-notice">

@@ -34,6 +34,12 @@ The builder stores its fields under `forktown-draft-v1` in localStorage. Storage
 
 Share links use `#place=id`, so static hosting needs no rewrite rules. Deep links work on root and repository subpaths. GitHub links are shown only after a valid `VITE_GITHUB_REPOSITORY=owner/repo` is set. The initial `forktown` creator is a clearly labeled starter credit, not a claimed contributor profile.
 
+### Save to the local project
+
+During `npm run dev`, `scripts/local-places.ts` adds a development-only POST endpoint. The builder’s **Save to my project** action writes a new, formatted `places/<id>.json` in the checkout running the server. Vite discovers the file and refreshes the city. The save creates no commits, branches, pushes, or PRs; those remain the contributor’s next steps. A completed save clears the browser draft.
+
+The endpoint accepts loopback connections with a matching local Origin and a per-server token, requires JSON, and limits request size. It validates against the shared schema and the current files on disk, serializes saves to avoid simultaneous plot claims, rejects redirected places directories, and uses exclusive file creation to avoid overwriting existing files. Errors identify the conflict in the builder. The server token and save UI are disabled in production builds, and the endpoint is not installed in the production preview server. Hosted sites keep the download/copy contribution route.
+
 ## Where to extend it
 
 - **Building family:** add an enum member and label in `schema.ts`, add its geometry in `drawBuilding`, and consider its selection bounds in `buildingHit`. The editor discovers enum values automatically.

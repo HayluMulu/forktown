@@ -36,6 +36,7 @@ import Modal from './components/Modal';
 import { isFoundingPlace, places, repositoryUrl } from './lib/places';
 import { PLOTS } from './lib/world';
 import { TYPE_LABELS, type Place } from './lib/schema';
+import { localSaveAvailable } from './lib/local-save';
 
 function initialSelection() {
   const params = new URLSearchParams(window.location.hash.slice(1));
@@ -123,7 +124,11 @@ export default function App() {
   function preview(place: Place) {
     setDraft(place);
     select(place.plot, true);
-    setToast('Your place is now in the local preview. Export its JSON when you’re ready.');
+    setToast(
+      localSaveAvailable
+        ? 'Your place is in the preview. Return to the builder to save it to your project.'
+        : 'Your place is now in the local preview. Export its JSON when you’re ready.',
+    );
   }
   const founding = selected && isFoundingPlace(selected);
   return (
@@ -271,7 +276,7 @@ export default function App() {
                 request is merged.
               </span>
               <button onClick={() => startBuilding(draft.plot)}>
-                Get the file <ArrowRight size={13} />
+                {localSaveAvailable ? 'Save my place' : 'Get the file'} <ArrowRight size={13} />
               </button>
               <button
                 aria-label="Remove local preview"
@@ -353,7 +358,8 @@ export default function App() {
                             className="button button-primary full-width"
                             onClick={() => startBuilding(selected.plot)}
                           >
-                            Get my contribution file <ArrowRight size={15} />
+                            {localSaveAvailable ? 'Save my place' : 'Get my contribution file'}{' '}
+                            <ArrowRight size={15} />
                           </button>
                         ) : (
                           <button className="button button-secondary full-width" onClick={share}>
@@ -637,10 +643,20 @@ export default function App() {
               <li>
                 <span>2</span>
                 <div>
-                  <h3>Make your own copy</h3>
+                  <h3>{localSaveAvailable ? 'Save to your project' : 'Make your own copy'}</h3>
                   <p>
-                    Fork the project on GitHub, then add your downloaded file to the{' '}
-                    <code>places/</code> folder. No terminal needed.
+                    {localSaveAvailable ? (
+                      <>
+                        Click <strong>Save to my project</strong> in the builder. It creates your
+                        JSON file in <code>places/</code> and updates the local city. Commit and
+                        push the file on your branch.
+                      </>
+                    ) : (
+                      <>
+                        Fork the project on GitHub, then add your downloaded file to the{' '}
+                        <code>places/</code> folder. No terminal needed.
+                      </>
+                    )}
                   </p>
                 </div>
               </li>

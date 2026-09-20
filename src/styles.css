@@ -1759,6 +1759,10 @@
     white-space: pre-wrap;
     overflow-wrap: anywhere;
   }
+  .local-save-action {
+    padding: 0 20px 14px;
+  }
+
   .export-actions {
     display: flex;
     gap: 8px;
