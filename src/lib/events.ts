@@ -1,10 +1,12 @@
 import { getPlot, hash, PLOTS } from './world.ts';
 import { isFootballPlot } from './football.ts';
+import { CINEMA_VENUE, CINEMA_SEATS, isCinemaPlot, insideCinema, cinemaProgram } from './cinema.ts';
 
 // Public venues belong to the town, outside the one-house contribution files.
 export const VENUES = [
   { id: 'green', plot: 'C5', name: 'The Lunch Green', kind: 'green' },
   { id: 'stage', plot: 'B5', name: 'The Little Stage', kind: 'stage' },
+  CINEMA_VENUE,
 ] as const;
 export type Venue = (typeof VENUES)[number];
 export type EventPose = 'sit' | 'read' | 'sip' | 'chat' | 'play' | 'cheer' | 'sway' | 'dance';
@@ -12,6 +14,7 @@ type EventSpot = { x: number; y: number; facing: 'se' | 'sw' | 'ne' | 'nw' };
 // Coordinates relative to the plot center. These are usable lawn spots, not a street queue.
 // Keep the stage audience in front of the platform (which ends at local y = 0.2).
 export const EVENT_SPOTS: Record<Venue['kind'], readonly EventSpot[]> = {
+  cinema: CINEMA_SEATS.map((seat) => ({ x: seat.x - 23.5, y: seat.y - 15.5, facing: 'ne' })),
   green: [
     { x: -0.55, y: 0, facing: 'se' },
     { x: 0.35, y: 0, facing: 'sw' },
@@ -37,10 +40,12 @@ export function eventSpot(venue: Venue, index: number) {
   return { position: { x: plot.x + 0.5 + spot.x, y: plot.y + 0.5 + spot.y }, facing: spot.facing };
 }
 export function insideVenue(venue: Venue, point: { x: number; y: number }) {
+  if (venue.kind === 'cinema') return insideCinema(point);
   const plot = getPlot(venue.plot)!;
   return Math.abs(point.x - plot.x - 0.5) <= 1.5 && Math.abs(point.y - plot.y - 0.5) <= 1.5;
 }
-export const venueAt = (plot: string) => VENUES.find((venue) => venue.plot === plot);
+export const venueAt = (plot: string) =>
+  isCinemaPlot(plot) ? CINEMA_VENUE : VENUES.find((venue) => venue.plot === plot);
 export const HOUSE_PLOTS = PLOTS.filter((plot) => !venueAt(plot.id) && !isFootballPlot(plot.id));
 
 export const EVENT_CHOICES = {
@@ -91,7 +96,21 @@ export type TownEvent = {
   homeBy: number;
 };
 
-export function eventsForDay(day: number): TownEvent[] {
+export function cinemaEventForDay(day: number): TownEvent {
+  const bill = cinemaProgram(day);
+  return {
+    id: 'cinema',
+    name: 'Three little films under the stars',
+    description: 'Tonight: ' + bill.films.map((film) => film.title).join(' · '),
+    venue: CINEMA_VENUE,
+    period: 'night',
+    depart: bill.depart,
+    start: bill.start,
+    end: bill.end,
+    homeBy: bill.homeBy,
+  };
+}
+export function eventsForDay(day: number, minutes = 720): TownEvent[] {
   const daytime = (['afternoon', 'evening'] as const).map((period, index) => {
     const choices = EVENT_CHOICES[period];
     const choice = choices[hash(`forktown-event:${Math.floor(day)}:${period}`) % choices.length];
@@ -119,6 +138,7 @@ export function eventsForDay(day: number): TownEvent[] {
       end: 1590,
       homeBy: 1710,
     },
+    cinemaEventForDay(minutes < 360 ? day - 1 : day),
   ];
 }
 // Night events use the evening's timeline: 02:30 is minute 1590, not 150.

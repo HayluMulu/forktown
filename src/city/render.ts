@@ -4,6 +4,10 @@ import { drawVenue, venueBounds } from './venues';
 import { drawBirds, drawMeadow } from './ambience';
 import { drawFootball } from './football';
 import { drawTownCat } from './cat';
+import { drawDuck } from './ducks';
+import { drawCinema, cinemaScreenHit } from './cinema';
+import { insideCinema, isCinemaPlot, CINEMA_VENUE } from '../lib/cinema';
+import { ducksAt } from '../lib/ducks';
 import { townCatAt, TOWN_CAT_ID } from '../lib/town-cat';
 import {
   footballAt,
@@ -218,6 +222,7 @@ type RenderOptions = {
   followed?: string | null;
   events?: TownEvent[];
   minutes?: number;
+  day?: number;
   football?: FootballState;
 };
 export function renderCity({
@@ -234,6 +239,7 @@ export function renderCity({
   followed,
   events = [],
   minutes = 0,
+  day = 0,
   football = footballAt(minutes),
 }: RenderOptions) {
   ctx.clearRect(0, 0, width, height);
@@ -300,7 +306,7 @@ export function renderCity({
     }
   // Stable plot IDs keep existing contributions in place as the town grows.
   for (const plot of PLOTS) {
-    if (isFootballPlot(plot.id)) continue;
+    if (isFootballPlot(plot.id) || isCinemaPlot(plot.id)) continue;
     const pt = plotCenter(plot);
     const occupied = byPlot.has(plot.id) || !!venueAt(plot.id);
     const active = selectedPlot === plot.id;
@@ -349,7 +355,17 @@ export function renderCity({
     isFootballPlot(selectedPlot ?? '') || isFootballPlot(hoveredPlot ?? ''),
   );
   // Rugs are floor paint: they must never be drawn over seated guests.
+  objects.push(
+    ...drawCinema(
+      ctx,
+      minutes,
+      day,
+      night,
+      isCinemaPlot(selectedPlot ?? '') || isCinemaPlot(hoveredPlot ?? ''),
+    ),
+  );
   for (const venue of VENUES) {
+    if (venue.kind === 'cinema') continue;
     const plot = PLOTS.find((plot) => plot.id === venue.plot)!;
     const point = plotCenter(plot);
     drawVenue(
@@ -381,6 +397,7 @@ export function renderCity({
         y < ROAD_MAX_Y &&
         !isRoad(x, y) &&
         !insideFootball({ x, y }) &&
+        !insideCinema({ x, y }) &&
         !PLOTS.some(
           (plot) => venueAt(plot.id) && Math.abs(plot.x - x) <= 1 && Math.abs(plot.y - y) <= 1,
         ) &&
@@ -392,6 +409,7 @@ export function renderCity({
       }
     }
   for (const venue of VENUES) {
+    if (venue.kind === 'cinema') continue;
     const plot = PLOTS.find((plot) => plot.id === venue.plot)!;
     const pt = plotCenter(plot);
     objects.push({
@@ -443,11 +461,17 @@ export function renderCity({
       },
     });
   }
-  const cat = townCatAt(places, minutes);
-  objects.push({
-    depth: cat.position.x + cat.position.y,
-    paint: () => drawTownCat(ctx, cat, night, followed === TOWN_CAT_ID),
-  });
+  const cat = townCatAt(places, minutes, day);
+  for (const duck of ducksAt(minutes))
+    objects.push({
+      depth: duck.position.x + duck.position.y,
+      paint: () => drawDuck(ctx, duck, night),
+    });
+  if (cat.outside)
+    objects.push({
+      depth: cat.position.x + cat.position.y,
+      paint: () => drawTownCat(ctx, cat, night, followed === TOWN_CAT_ID),
+    });
   objects.sort((a, b) => a.depth - b.depth).forEach((object) => object.paint());
   drawBirds(ctx, minutes, night);
   ctx.restore();
@@ -473,6 +497,7 @@ export function cityHit(
   point: Point,
   places: Place[],
   residents: ResidentState[],
+  cinemaScreenReveal = 1,
 ): CityHit | undefined {
   const plotId = buildingHit(point, places);
   const plot = PLOTS.find((plot) => plot.id === plotId);
@@ -489,6 +514,7 @@ export function cityHit(
     target = { kind: 'place', id: FOOTBALL_VENUE.plot };
   }
   for (const venue of VENUES) {
+    if (venue.kind === 'cinema') continue;
     const plot = PLOTS.find((plot) => plot.id === venue.plot)!;
     const p = plotCenter(plot),
       bounds = venueBounds(venue);
@@ -504,6 +530,14 @@ export function cityHit(
     }
   }
   // Match the painter's order: residents follow houses at equal depth, and
+  const hitsCinemaScreen = cinemaScreenHit(point, cinemaScreenReveal);
+  if (insideCinema(unproject(point.x, point.y)) || hitsCinemaScreen) {
+    const cinemaDepth = hitsCinemaScreen ? 40.2 : -1;
+    if (cinemaDepth >= depth || !target) {
+      depth = cinemaDepth;
+      target = { kind: 'place', id: CINEMA_VENUE.plot };
+    }
+  }
   // the last resident in the input wins ties (the drawing sort is stable).
   for (const resident of residents) {
     if (resident.activity !== 'stroll' || residentDepth(resident) < depth) continue;

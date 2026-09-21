@@ -33,12 +33,14 @@ Read the [step-by-step contribution guide](CONTRIBUTING.md). The published GitHu
 
 - An original isometric city renderer, with trees, roads, a river, little residents, and six building styles.
 - Wildflower patches on open plots, small daytime flocks, and chimney smoke and evening window silhouettes when neighbors are home. Ambient movement pauses with the town.
+- A daily 08:00–12:30 duck walk: a mother and five ducklings leave the river, follow the street beside the Lunch Green to the first houses, turn around, and return to the water. The last duckling briefly dawdles and catches up. Nearby wandering residents stop for four seconds, turn toward the ducks, and show a heart bubble before resuming their walk. The family appears in both town and live views, without needing resident participation.
 - Mouse and touch panning, zoom buttons, scroll zoom, and keyboard map controls.
 - Custom floors, roof shapes, wall and trim colors, window styles, gardens, porches, and balconies.
 - Residents with names, outfits, accessories, greetings, and simple day and night routines.
 - Road-following strolls with four directional walking views, distance-based footsteps, occasional neighbor greetings, bedtime, and a camera that follows a resident.
 - Shared daily events: picnics, books, and lawn games at the Lunch Green; rock, acoustic, and jazz evenings at the Little Stage. Strolling neighbors can join a small audience and walk home afterward. Both venues are reserved public plots.
 - A nightly 23:30–02:30 disco at the Little Stage, with a DJ, dancing night owls, steady pastel lights, and an original dance track. Guests walk home by 04:30; sleeping neighbors stay indoors.
+- The four-plot Starlight Cinema on D6, D7, E6, and E7: three original animated shorts every night from 20:30, with six-second Forktown intermissions, a twelve-seat picnic lawn, projector, string lights, and popcorn stand. Film lengths stay independent; each day selects three distinct titles from the library. Night owls can attend instead of the disco. See [the cinema and film library guide](docs/CINEMA.md).
 - The six-plot Meadow Ground: four-a-side football all day, a live scoreboard, passing, shots, saves, goal celebrations, spectators, and short breaks between halves. Zoom close with Town sound enabled for kicks, whistles, and cheers. See [Football at the Meadow Ground](docs/FOOTBALL.md).
 - A shared UTC-based 24-minute town day, automatic day/night lighting, pause/resume-live, and reduced-motion support.
 - Optional original music: day and night themes, three concert arrangements, and a midnight dance track, with a volume control, soft transitions, and automatic pause when the tab is hidden. See [Forktown FM](docs/MUSIC.md) for the listening preview and score guide.

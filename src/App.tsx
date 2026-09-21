@@ -32,6 +32,8 @@ import Modal from './components/Modal';
 import TownEvents from './components/TownEvents';
 import Soundtrack from './components/Soundtrack';
 import FootballMatch from './components/FootballMatch';
+import CinemaInfo from './components/CinemaInfo';
+import { CINEMA_VENUE, isCinemaPlot } from './lib/cinema';
 import { footballAt, isFootballPlot, FOOTBALL_VENUE } from './lib/football';
 import { trackForTown } from './music/score';
 import {
@@ -50,6 +52,8 @@ import { simulateResidents, residentActivityLabel, timeLabel } from './lib/simul
 
 type Panel = 'places' | 'neighbors' | 'events';
 function initialSelection() {
+  if (new URLSearchParams(window.location.hash.slice(1)).get('venue') === 'cinema')
+    return CINEMA_VENUE.plot;
   if (new URLSearchParams(window.location.hash.slice(1)).get('venue') === 'football')
     return FOOTBALL_VENUE.plot;
   return (
@@ -81,7 +85,11 @@ export default function App() {
   const [listening, setListening] = useState({ gain: 0, pan: 0 });
   const selectedFootball = isFootballPlot(selectedPlot ?? '');
   const night = clock.minutes < 360 || clock.minutes >= 1200;
-  const events = useMemo(() => eventsForDay(clock.day), [clock.day]);
+  const cinemaEvening = clock.minutes < 360;
+  const events = useMemo(
+    () => eventsForDay(clock.day, cinemaEvening ? 0 : 720),
+    [clock.day, cinemaEvening],
+  );
   const displayPlaces = useMemo(
     () =>
       draft && !places.some((place) => place.id === draft.id || place.plot === draft.plot)
@@ -133,7 +141,7 @@ export default function App() {
     window.history.replaceState(
       null,
       '',
-      `${window.location.pathname}${window.location.search}${place ? `#place=${encodeURIComponent(place.id)}` : isFootballPlot(plotId ?? '') ? '#venue=football' : ''}`,
+      `${window.location.pathname}${window.location.search}${place ? `#place=${encodeURIComponent(place.id)}` : isFootballPlot(plotId ?? '') ? '#venue=football' : isCinemaPlot(plotId ?? '') ? '#venue=cinema' : ''}`,
     );
     if (plotId && focus) city.current?.focus(plotId);
   }, []);
@@ -234,6 +242,7 @@ export default function App() {
         residents={residents}
         events={events}
         minutes={clock.minutes}
+        day={clock.day}
         football={football}
         onListening={setListening}
         followed={followed}
@@ -368,7 +377,9 @@ export default function App() {
             </button>
           </div>
           <div className="town-panel-content">
-            {selectedFootball ? (
+            {selectedVenue?.kind === 'cinema' ? (
+              <CinemaInfo minutes={clock.minutes} day={clock.day} />
+            ) : selectedFootball ? (
               <FootballMatch
                 game={football}
                 watching={
@@ -381,7 +392,7 @@ export default function App() {
               <div className="venue-info">
                 <span className="quiet-label">PUBLIC SPACE · {selectedVenue.plot}</span>
                 {selectedProgram.map((event) => (
-                  <div className="venue-program" key={event.period}>
+                  <div className="venue-program" key={event.id}>
                     <span className="eyebrow">{eventStatus(event, clock.minutes)}</span>
                     <h3>{event.name}</h3>
                     <p>{event.description}</p>

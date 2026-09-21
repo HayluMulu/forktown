@@ -10,9 +10,10 @@ import {
 } from '../src/lib/events';
 import { residentActivityLabel, simulateResidents } from '../src/lib/simulation';
 import { getPlot, hash, isRoad, plotEntrance } from '../src/lib/world';
+import { cinemaGuests } from '../src/lib/cinema';
 
 const sample = placeSchema.parse(JSON.parse(readFileSync('places/my-little-place.json', 'utf8')));
-const owls: Place[] = HOUSE_PLOTS.slice(0, 20).map((plot, index) => ({
+const owls: Place[] = HOUSE_PLOTS.slice(0, 32).map((plot, index) => ({
   ...sample,
   id: `night-owl-${index}`,
   plot: plot.id,
@@ -27,7 +28,8 @@ const guestIds = new Set(
     .filter((state) => state.event)
     .map((state) => state.id),
 );
-const overflow = owls.filter((home) => !guestIds.has(home.id));
+const movieGuests = new Set(cinemaGuests(owls, 8));
+const overflow = owls.filter((home) => !guestIds.has(home.id) && !movieGuests.has(home.id));
 const distance = (a: { x: number; y: number }, b: { x: number; y: number }) =>
   Math.hypot(a.x - b.x, a.y - b.y);
 
@@ -77,14 +79,19 @@ describe('Night owls and the midnight party', () => {
       after = at(1440.001);
     expect(guestIds.size).toBe(8);
     expect(
-      new Set(after.filter((state) => state.event).map((state) => JSON.stringify(state.position)))
-        .size,
+      new Set(
+        after
+          .filter((state) => state.event?.id === 'night-party')
+          .map((state) => JSON.stringify(state.position)),
+      ).size,
     ).toBe(8);
     before.forEach((state, index) => {
-      expect(distance(state.position, after[index].position)).toBeLessThan(0.001);
+      expect(distance(state.position, after[index].position)).toBeLessThan(
+        state.event?.id === 'cinema' ? 0.01 : 0.001,
+      );
       expect(state.event).toEqual(after[index].event);
     });
-    for (const state of after.filter((state) => state.event)) {
+    for (const state of after.filter((state) => state.event?.id === 'night-party')) {
       expect(state).toMatchObject({
         activity: 'stroll',
         moving: false,

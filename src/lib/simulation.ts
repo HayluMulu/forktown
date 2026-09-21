@@ -1,10 +1,13 @@
 import type { Place } from './schema';
+import { duckAwareWalk } from './duck-reactions';
+import { CINEMA_ENTRANCE, cinemaGuests } from './cinema';
 import { FOOTBALL_ENTRANCE, spectatorSpot, footballAt } from './football';
 import {
   EVENT_SPOTS,
   eventMinutes,
   eventSpot,
   eventsForDay,
+  cinemaEventForDay,
   type EventPose,
   type TownEvent,
 } from './events';
@@ -29,6 +32,7 @@ export type ResidentState = {
   facing: 'se' | 'sw' | 'ne' | 'nw';
   walkPhase: number;
   greeting: boolean;
+  duckLove?: boolean;
   nightWalk?: boolean;
   pose?: EventPose;
   event?: { name: string; id: string; phase: 'going' | 'attending' | 'returning' };
@@ -114,18 +118,27 @@ function alongRoute(route: Point[], progress: number) {
 
 function eventWalk(home: Place, event: TownEvent, seat: number, time: number) {
   const doorstep = plotEntrance(getPlot(home.plot)!);
-  const entrance = plotEntrance(getPlot(event.venue.plot)!);
+  const entrance =
+    event.venue.kind === 'cinema' ? CINEMA_ENTRANCE : plotEntrance(getPlot(event.venue.plot)!);
   const spot = eventSpot(event.venue, seat),
     audience = spot.position;
   // Enter from the side of the picnic lawn, or from the stage's front lawn.
   // All legs are axis-aligned; the route never crosses the platform or refreshment table.
   const laneX = event.venue.kind === 'green' ? entrance.x - 1.35 : audience.x;
-  const route = [
-    ...roadPath(doorstep, entrance),
-    { x: laneX, y: entrance.y },
-    { x: laneX, y: audience.y },
-    audience,
-  ];
+  const route =
+    event.venue.kind === 'cinema'
+      ? [
+          ...roadPath(doorstep, entrance),
+          { x: 28.5, y: entrance.y },
+          { x: 28.5, y: audience.y },
+          audience,
+        ]
+      : [
+          ...roadPath(doorstep, entrance),
+          { x: laneX, y: entrance.y },
+          { x: laneX, y: audience.y },
+          audience,
+        ];
   const leaveHome = event.depart + seat * 1.3;
   const leaveEvent = event.end + seat * 1.4;
   const phase: NonNullable<ResidentState['event']>['phase'] =
@@ -141,19 +154,21 @@ function eventWalk(home: Place, event: TownEvent, seat: number, time: number) {
         : { position: audience, moving: false, facing: spot.facing, walkPhase: 0 };
   const beat = Math.floor((time + (hash(home.id) % 19)) / 12);
   const pose: EventPose =
-    event.id === 'night-party'
-      ? 'dance'
-      : event.venue.kind === 'stage'
-        ? (event.id === 'rock' ? beat % 3 !== 0 : beat % 4 === 0)
-          ? 'cheer'
-          : 'sway'
-        : event.id === 'books'
-          ? beat % 4 === 0
-            ? 'sip'
-            : 'read'
-          : event.id === 'games' && seat % 2 === 0
-            ? 'play'
-            : (['sit', 'sip', 'chat', 'sit'] as const)[(beat + seat) % 4];
+    event.venue.kind === 'cinema'
+      ? 'sit'
+      : event.id === 'night-party'
+        ? 'dance'
+        : event.venue.kind === 'stage'
+          ? (event.id === 'rock' ? beat % 3 !== 0 : beat % 4 === 0)
+            ? 'cheer'
+            : 'sway'
+          : event.id === 'books'
+            ? beat % 4 === 0
+              ? 'sip'
+              : 'read'
+            : event.id === 'games' && seat % 2 === 0
+              ? 'play'
+              : (['sit', 'sip', 'chat', 'sit'] as const)[(beat + seat) % 4];
   return {
     ...movement,
     ...(phase === 'attending'
@@ -168,6 +183,13 @@ function eventWalk(home: Place, event: TownEvent, seat: number, time: number) {
 }
 
 export function residentActivityLabel(state: ResidentState): string {
+  if (state.duckLove) return 'Stopped to admire the ducklings';
+  if (state.event?.id === 'cinema')
+    return state.event.phase === 'going'
+      ? 'Walking to the Starlight Cinema'
+      : state.event.phase === 'returning'
+        ? 'Walking home from the movies'
+        : 'Watching a film under the stars';
   if (state.event?.id === 'football')
     return state.event.phase === 'going'
       ? 'Walking to the football'
@@ -197,12 +219,19 @@ export function simulateResidents(places: Place[], minutes: number, day = 0): Re
   const eventTime = event ? eventMinutes(event, time) : time;
   // Keep the guest list and seats attached to the evening across midnight.
   const eventDay = period === 'night' && time < 360 ? day - 1 : day;
+  const movieGuests = cinemaGuests(places, eventDay);
+  const cinema = cinemaEventForDay(eventDay);
+  const cinemaTime = eventMinutes(cinema, time);
   // Venue capacity comes from its physical spots. Overflow keeps its usual stroll.
   // Selection is shared, order-independent,
   // and changes each day; contributors never need to schedule a named meeting.
   const attendees = event
     ? places
-        .filter((home) => home.resident.routine[event.period] === 'stroll')
+        .filter(
+          (home) =>
+            home.resident.routine[event.period] === 'stroll' &&
+            (period === 'afternoon' || !movieGuests.includes(home.id)),
+        )
         .sort(
           (a, b) =>
             hash(`${eventDay}:${event.id}:${a.id}`) - hash(`${eventDay}:${event.id}:${b.id}`) ||
@@ -234,6 +263,24 @@ export function simulateResidents(places: Place[], minutes: number, day = 0): Re
     const plot = getPlot(home.plot);
     if (!plot) return [];
     const doorstep = plotEntrance(plot);
+    const movieSeat = movieGuests.indexOf(home.id);
+    if (movieSeat !== -1 && (period === 'evening' || period === 'night')) {
+      const trip = cinemaTime >= cinema.depart && cinemaTime < cinema.homeBy;
+      return [
+        {
+          id: home.id,
+          resident: home.resident,
+          home,
+          position: doorstep,
+          activity: trip || period === 'evening' ? 'stroll' : 'sleep',
+          moving: false,
+          facing: 'se',
+          walkPhase: 0,
+          greeting: false,
+          ...(trip ? eventWalk(home, cinema, movieSeat, cinemaTime) : {}),
+        },
+      ];
+    }
     const seat = attendees.indexOf(home.id);
     const footballSeat = footballFans.indexOf(home.id);
     const nightGuest = period === 'night' && seat !== -1;
@@ -259,6 +306,7 @@ export function simulateResidents(places: Place[], minutes: number, day = 0): Re
       moving = false;
     let facing: ResidentState['facing'] = 'se',
       walkPhase = 0;
+    let duckLove: boolean | undefined;
     if (nightWalk) {
       const nearby = roadNodes.filter((point) => {
         const distance = Math.abs(point.x - doorstep.x) + Math.abs(point.y - doorstep.y);
@@ -281,21 +329,47 @@ export function simulateResidents(places: Place[], minutes: number, day = 0): Re
       const duration = period === 'evening' ? 240 : 360;
       const loopLength = route.length - 1 + 12;
       const cycles = Math.max(1, Math.floor((duration * 0.32) / loopLength));
-      const phase = ((time - start) / duration) * loopLength * cycles;
-      // Finish each walk at home, take a short break, and wander out again.
-      const step = phase % (route.length - 1 + 12);
-      if (route.length > 1) facing = facingAlong(route[route.length - 2], route[route.length - 1]);
-      if (step < route.length - 1) {
-        const index = Math.floor(step),
-          fraction = step - index;
-        position = {
-          x: route[index].x + (route[index + 1].x - route[index].x) * fraction,
-          y: route[index].y + (route[index + 1].y - route[index].y) * fraction,
+      const sample = (
+        at: number,
+      ): Pick<ResidentState, 'position' | 'moving' | 'facing' | 'walkPhase' | 'duckLove'> => {
+        const phase = ((at - start) / duration) * loopLength * cycles;
+        // Finish each walk at home, take a short break, and wander out again.
+        const step = phase % loopLength;
+        if (step < route.length - 1) {
+          const index = Math.floor(step),
+            fraction = step - index;
+          return {
+            position: {
+              x: route[index].x + (route[index + 1].x - route[index].x) * fraction,
+              y: route[index].y + (route[index + 1].y - route[index].y) * fraction,
+            },
+            moving: true,
+            facing: facingAlong(route[index], route[index + 1]),
+            walkPhase: (step * 3) % 1,
+          };
+        }
+        return {
+          position: doorstep,
+          moving: false,
+          facing:
+            route.length > 1
+              ? facingAlong(route[route.length - 2], route[route.length - 1])
+              : facing,
+          walkPhase: 0,
         };
-        moving = true;
-        facing = facingAlong(route[index], route[index + 1]);
-        walkPhase = (step * 3) % 1;
-      }
+      };
+      const movement =
+        seat === -1
+          ? duckAwareWalk(
+              `${home.id}:${home.plot}:${period}`,
+              time,
+              start,
+              start + duration,
+              sample,
+            )
+          : sample(time);
+      ({ position, moving, facing, walkPhase } = movement);
+      duckLove = movement.duckLove;
     }
     let footballVisit: Partial<ResidentState> = {};
     if (footballSeat !== -1) {
@@ -335,6 +409,7 @@ export function simulateResidents(places: Place[], minutes: number, day = 0): Re
         facing,
         walkPhase,
         greeting: false,
+        ...(duckLove ? { duckLove: true } : {}),
         ...footballVisit,
         ...(nightWalk ? { nightWalk: true } : {}),
         ...(event && seat !== -1 && (period !== 'night' || partyTrip)
@@ -352,6 +427,8 @@ export function simulateResidents(places: Place[], minutes: number, day = 0): Re
         b.activity === 'stroll' &&
         !a.event &&
         !b.event &&
+        !a.duckLove &&
+        !b.duckLove &&
         Math.hypot(a.position.x - b.position.x, a.position.y - b.position.y) < 1.4
       ) {
         // Occasional greetings, with no named meetings or shared mutable state.
