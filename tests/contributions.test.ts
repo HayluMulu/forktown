@@ -16,6 +16,7 @@ import {
 import { buildingHit, shade } from '../src/city/render';
 import { HOUSE_PLOTS } from '../src/lib/events';
 import { FOOTBALL_PLOTS } from '../src/lib/football';
+import { CINEMA_PLOTS } from '../src/lib/cinema';
 
 const sample: Place = placeSchema.parse({
   id: 'tiny-library',
@@ -127,11 +128,11 @@ describe('The world stays predictable as people contribute', () => {
     expect(shade('#FFFFFF', 30)).toBe('#ffffff');
     expect(shade('#000000', -30)).toBe('#000000');
   });
-  it('has 100 unique plots with the public venues and six-plot ground reserved', () => {
+  it('has 100 unique plots with public venues, football ground, and cinema reserved', () => {
     expect(new Set(PLOTS.map((plot) => plot.id)).size).toBe(100);
     for (const plot of PLOTS)
       expect(placeSchema.safeParse({ ...sample, plot: plot.id }).success).toBe(
-        !['B5', 'C5', ...FOOTBALL_PLOTS].includes(plot.id),
+        !['B5', 'C5', ...FOOTBALL_PLOTS, ...CINEMA_PLOTS].includes(plot.id),
       );
   });
   it('keeps the same coordinates for an existing plot regardless of other places', () => {

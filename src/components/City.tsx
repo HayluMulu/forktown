@@ -6,6 +6,7 @@ import type { Place } from '../lib/schema';
 import type { ResidentState } from '../lib/simulation';
 import { residentActivityLabel } from '../lib/simulation';
 import { VENUES, venueAt, type TownEvent } from '../lib/events';
+import { CINEMA_FRAME, isCinemaPlot, cinemaAt } from '../lib/cinema';
 import { project, WORLD_BOUNDS } from '../lib/world';
 import {
   FOOTBALL_CENTER,
@@ -109,6 +110,22 @@ const City = forwardRef<CityHandle, Props>(function City(
       zoom,
     };
   };
+  const cinemaCamera = (width: number, height: number): Camera => {
+    const mobile = width < 600;
+    const zoom = Math.max(
+      0.1,
+      Math.min(
+        2.2,
+        (width - (mobile ? 24 : 400)) / CINEMA_FRAME.width,
+        (mobile ? height * 0.43 : height - 150) / CINEMA_FRAME.height,
+      ),
+    );
+    return {
+      x: (mobile ? width / 2 : (width - 370) / 2) - CINEMA_FRAME.center.x * zoom,
+      y: (mobile ? height * 0.29 : height * 0.5) - CINEMA_FRAME.center.y * zoom,
+      zoom,
+    };
+  };
   const defaultCamera = useCallback((width: number, height: number): Camera => {
     const zoom = Math.max(
       0.01,
@@ -181,6 +198,10 @@ const City = forwardRef<CityHandle, Props>(function City(
       reset,
       stopFollowing,
       focus: (id) => {
+        if (isCinemaPlot(id)) {
+          setCamera(cinemaCamera(size.width, size.height));
+          return;
+        }
         if (isFootballPlot(id)) {
           setCamera(footballCamera(size.width, size.height));
           return;
@@ -206,7 +227,8 @@ const City = forwardRef<CityHandle, Props>(function City(
       setSize({ width, height });
       const initial = neighborhoodCamera(width, height);
       const selected = getPlot(selectedRef.current ?? '');
-      if (selected && isFootballPlot(selected.id)) setCamera(footballCamera(width, height));
+      if (selected && isCinemaPlot(selected.id)) setCamera(cinemaCamera(width, height));
+      else if (selected && isFootballPlot(selected.id)) setCamera(footballCamera(width, height));
       else if (selected) {
         const point = plotCenter(selected),
           zoom = Math.max(initial.zoom, 0.85);
@@ -307,7 +329,7 @@ const City = forwardRef<CityHandle, Props>(function City(
       y: (local.y - current.y) / current.zoom,
     };
     const ground = unproject(world.x, world.y);
-    const target = cityHit(world, places, residents);
+    const target = cityHit(world, places, residents, cinemaAt(minutes, day).screenReveal);
     return {
       id: target?.kind === 'place' ? target.id : (findPlotAt(ground.x, ground.y)?.id ?? null),
       residentId: target?.kind === 'resident' ? target.id : undefined,

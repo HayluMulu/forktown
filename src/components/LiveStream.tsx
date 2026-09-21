@@ -23,7 +23,11 @@ export default function LiveStream() {
   const [size, setSize] = useState({ width: window.innerWidth, height: window.innerHeight });
   const [listening, setListening] = useState({ gain: 0, pan: 0 });
   const program = useMemo(() => liveProgram(places, clock.day), [clock.day]);
-  const events = useMemo(() => eventsForDay(clock.day), [clock.day]);
+  const cinemaEvening = clock.minutes < 360;
+  const events = useMemo(
+    () => eventsForDay(clock.day, cinemaEvening ? 0 : 720),
+    [clock.day, cinemaEvening],
+  );
   const residents = useMemo(
     () => simulateResidents(places, clock.minutes, clock.day),
     [clock.minutes, clock.day],

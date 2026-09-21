@@ -59,8 +59,8 @@ describe('Live broadcast director', () => {
             expect(subject.activity).toBe('stroll');
             if (subject.event?.phase === 'attending') {
               const highlight =
-                subject.event.id === 'football'
-                  ? 'football'
+                subject.event.id === 'football' || subject.event.id === 'cinema'
+                  ? subject.event.id
                   : program.events.find((event) => event.id === subject.event?.id)!.period;
               expect(
                 liveHighlights(highlight === 'night' && minute < 360 ? day - 1 : day),
@@ -77,7 +77,7 @@ describe('Live broadcast director', () => {
               expect(event).toBeDefined();
               expect(
                 liveHighlights(event.period === 'night' && minute < 360 ? day - 1 : day),
-              ).toContain(event.period);
+              ).toContain(event.id === 'cinema' ? 'cinema' : event.period);
               expect(isEventLive(event, minute)).toBe(true);
               if (event.venue.kind === 'green')
                 expect(
@@ -233,7 +233,7 @@ describe('Live broadcast director', () => {
     }));
     const program = liveProgram(homes, 12);
     const replacements = new Set<string>();
-    for (let time = 450; time < 585; time += FOLLOW_SECONDS) {
+    for (let time = 360; time < 630; time += FOLLOW_SECONDS) {
       const residents = simulateResidents(homes, time, 12);
       const original = liveShotAt(program, time, residents);
       const remaining = residents

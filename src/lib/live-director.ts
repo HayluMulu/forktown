@@ -1,6 +1,7 @@
 import type { Camera } from '../city/render';
 import { eventsForDay, isEventLive, type TownEvent } from './events';
 import { ducksAt } from './ducks';
+import { cinemaAt, CINEMA_FRAME } from './cinema';
 import { FOOTBALL_CENTER, footballAt } from './football';
 import type { Place } from './schema';
 import { simulateResidents, type ResidentState } from './simulation';
@@ -16,7 +17,7 @@ export type LiveShot = {
   height: number;
   residentId?: string;
 };
-const HIGHLIGHTS = ['ducks', 'football', 'afternoon', 'evening', 'night'] as const;
+const HIGHLIGHTS = ['ducks', 'football', 'afternoon', 'evening', 'night', 'cinema'] as const;
 type Highlight = (typeof HIGHLIGHTS)[number];
 export type LiveProgram = {
   day: number;
@@ -48,7 +49,9 @@ export function liveHighlights(day: number): Highlight[] {
 function features(program: LiveProgram, highlight: Highlight, time: number): boolean {
   // A selected disco remains selected until it ends, even when the town day rolls over.
   const selected =
-    highlight === 'night' && time < 360 ? program.previousHighlights : program.highlights;
+    (highlight === 'night' || highlight === 'cinema') && time < 360
+      ? program.previousHighlights
+      : program.highlights;
   return selected.includes(highlight);
 }
 
@@ -57,8 +60,8 @@ function followable(program: LiveProgram, residents: ResidentState[], time: numb
     if (resident.activity !== 'stroll') return false;
     if (resident.event?.phase !== 'attending') return true;
     const highlight =
-      resident.event.id === 'football'
-        ? 'football'
+      resident.event.id === 'football' || resident.event.id === 'cinema'
+        ? resident.event.id
         : program.events.find((event) => event.id === resident.event?.id)?.period;
     // Don't turn a skipped show into the same show through an audience close-up.
     return highlight !== undefined && features(program, highlight, time);
@@ -121,8 +124,17 @@ export function liveShotAt(
     };
   }
 
+  const cinema = cinemaAt(time, program.day);
+  if (cinema.live && features(program, 'cinema', time))
+    return {
+      id: `event:${cinema.program.day}:cinema`,
+      kind: 'event',
+      label: cinema.slot?.film?.title ?? 'Intermission at the Starlight Cinema',
+      ...CINEMA_FRAME,
+    };
   const event = program.events.find(
     (event) =>
+      event.id !== 'cinema' &&
       features(program, event.period, time) &&
       isEventLive(event, time) &&
       (event.venue.kind === 'stage' ||

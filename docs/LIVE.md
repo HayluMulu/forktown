@@ -10,7 +10,7 @@ Population counts one resident per occupied home, including the founding neighbo
 
 One town day lasts 24 real minutes. The broadcast uses the same UTC town clock, residents, events, and football as the interactive town. Reloading or joining midway picks up the current scene. This dedicated moving broadcast plays immediately, including when the regular town would initially pause for reduced motion.
 
-- **Three daily highlights:** randomly choose three of the duck walk, football, lunch gathering, evening concert, and disco. Choices are shared by all viewers and stay fixed across reloads. All five activities still happen in town; only the broadcast lineup changes. A selected disco finishes at 02:30 the following morning, retaining the previous evening's choice across midnight.
+- **Three daily highlights:** randomly choose three of the duck walk, football, lunch gathering, evening concert, disco, and outdoor cinema. Choices are shared by all viewers and stay fixed across reloads. All six activities still happen in town; only the broadcast lineup changes. A selected disco finishes at 02:30 the following morning, retaining the previous evening's choice across midnight.
 - **One minute of neighborhood scenery:** 05:00–06:00 town time, exactly 60 real seconds per 24-minute cycle. Frame Miso's current neighborhood with him outside, keeping activity visible even in this wider view. Reloading does not restart this window. If there is no eligible outdoor subject or selected highlight during daylight, show a quiet home while Miso sleeps.
 - **Selected gatherings:** when chosen, show the Lunch Green's 13:00–16:00 gathering when guests are present, the Little Stage's 19:00–21:00 concert, or the 23:30–02:30 disco.
 - **People throughout the day:** between highlights, follow an outdoor resident in 45-second clips. Shuffle the choices for each clip, favoring people with fewer featured clips and avoiding consecutive follows when another eligible neighbor is available. Only actual follows count toward the planned screen time. Include spectators at selected activities, but don't show a skipped event through audience close-ups. Switch to a ranked replacement if a resident goes indoors. If only one eligible neighbor is outside, stay with that neighbor. Keep the name label and foot highlight visible.
@@ -21,6 +21,8 @@ One town day lasts 24 real minutes. The broadcast uses the same UTC town clock, 
 - **During a held shot:** gently drift from side to side over 90 seconds and ease up to 4% closer and back over two minutes. Motion stays inside the subject's framing margin and never pulls farther out than the original view. People and cat shots use tracking movement. The motion stays continuous across midnight.
 
 Lunch features can be a picnic, books and lemonade, or lawn games. Concerts can be rock, acoustic, or jazz. The director films the actual town simulation: it does not invent interactions or force residents into new routines.
+
+The Starlight Cinema is also in the pool of daily broadcast highlights. When selected, its complete three-film program takes priority from 20:30 through the closing card, with the camera framing both screen and audience. Its initial program finishes at 23:30; later film libraries may produce different end times. Cinema guests are not used as audience close-ups on days when cinema is skipped. See [the cinema guide](CINEMA.md).
 
 ## Sound for recording
 

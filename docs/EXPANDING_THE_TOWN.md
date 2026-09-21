@@ -1,6 +1,6 @@
 # Expanding the town
 
-The town has **100 plots: ten rows (A–J) and ten columns (1–10)**, twice the previous 50-plot capacity. B5 and C5 hold the stage and green; F3–F5 and G3–G5 form the six-plot Meadow Ground, leaving 92 house plots. Every existing house keeps its ID, coordinates, grass, and entrance; existing place JSON and share links need no migration.
+The town has **100 plots: ten rows (A–J) and ten columns (1–10)**, twice the previous 50-plot capacity. B5 and C5 hold the stage and green; F3–F5 and G3–G5 form the six-plot Meadow Ground; D6, D7, E6, and E7 hold the Starlight Cinema, leaving 88 house plots. Every existing house keeps its ID, coordinates, grass, and entrance; existing place JSON and share links need no migration.
 
 ## One size setting
 
