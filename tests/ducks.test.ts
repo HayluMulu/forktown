@@ -7,6 +7,7 @@ import {
   DUCK_TURN_X,
   DUCK_WALK_START,
   DUCK_WALK_END,
+  DUCK_DAWDLE_START,
 } from '../src/lib/ducks';
 import { isRoad, WORLD_WIDTH } from '../src/lib/world';
 
@@ -44,7 +45,7 @@ describe('Daily river-to-neighborhood duck walk', () => {
         nearest[duck.id] = Math.min(nearest[duck.id], x);
         directions[duck.id].add(duck.left);
         const next = ducksAt(time + 0.001).find((other) => other.id === duck.id);
-        if (next) expect(Math.hypot(next.position.x - x, next.position.y - y)).toBeLessThan(0.0005);
+        if (next) expect(Math.hypot(next.position.x - x, next.position.y - y)).toBeLessThan(0.0007);
       }
     }
     for (let id = 0; id < DUCK_COUNT; id++) {
@@ -57,13 +58,43 @@ describe('Daily river-to-neighborhood duck walk', () => {
     const lastAt = (elapsed: number) => ducksAt(DUCK_WALK_START + 10 + elapsed).at(-1)!;
     expect(lastAt(95).position).toEqual(lastAt(96).position);
     expect(lastAt(96).position).toEqual(lastAt(97).position);
+    expect(lastAt(97).position).toEqual(lastAt(99).position);
     const gap = (elapsed: number) => {
       const family = ducksAt(DUCK_WALK_START + 10 + elapsed);
       return family[5].position.x - family[4].position.x;
     };
     expect(gap(97)).toBeGreaterThan(gap(94));
-    expect(gap(103)).toBeCloseTo(gap(94));
+    expect(gap(105)).toBeCloseTo(gap(94));
     for (let elapsed = 90; elapsed <= 110; elapsed += 0.1) expect(gap(elapsed)).toBeGreaterThan(0);
+  });
+
+  it('acts out a curious pause, surprise hop, quick catch-up, and happy finish only for the dawdler', () => {
+    for (const [offset, kind] of [
+      [1, 'peck'],
+      [2.5, 'notice'],
+      [3.5, 'hop'],
+      [7, 'scurry'],
+      [10.5, 'proud'],
+    ] as const) {
+      const family = ducksAt(DUCK_DAWDLE_START + offset);
+      expect(family.slice(0, -1).every((duck) => !duck.antic)).toBe(true);
+      expect(family.at(-1)?.antic?.kind).toBe(kind);
+      expect(family.at(-1)?.antic?.progress).toBeGreaterThanOrEqual(0);
+      expect(family.at(-1)?.antic?.progress).toBeLessThan(1);
+    }
+    const lastAt = (offset: number) => ducksAt(DUCK_DAWDLE_START + offset).at(-1)!;
+    expect(lastAt(-0.01).antic).toBeUndefined();
+    expect(lastAt(11.5).antic).toBeUndefined();
+    const speed = (offset: number) =>
+      (lastAt(offset).position.x - lastAt(offset + 0.001).position.x) / 0.001;
+    expect(speed(7)).toBeGreaterThan(speed(-1) * 1.9);
+    expect(speed(10)).toBeCloseTo(speed(-1), 5);
+    for (const boundary of [0, 2, 3, 4, 10, 11.5]) {
+      expect(
+        Math.abs(lastAt(boundary - 0.0001).position.x - lastAt(boundary + 0.0001).position.x),
+      ).toBeLessThan(0.0002);
+    }
+    expect(ducksAt(DUCK_DAWDLE_START + 7 + 1440)).toEqual(ducksAt(DUCK_DAWDLE_START + 7));
   });
 
   it('reproduces the same scene after reload, pause, and day wrapping', () => {
